@@ -229,6 +229,17 @@ main{padding:14px 16px 24px;display:flex;flex-direction:column;gap:14px}
 .sc-stamp{position:absolute;left:13px;bottom:11px;font-size:9.5px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--blood);border:1.5px solid var(--blood);
   border-radius:3px;padding:2px 6px;transform:rotate(-6deg);opacity:.75;font-weight:700}
+.fouls{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}
+.fouls-h{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;
+  color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.fouls-h span{color:var(--blood);letter-spacing:.08em}
+.foul-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;
+  font-size:12px;padding:1px 0;color:var(--muted)}
+.foul-row.on{color:var(--text);font-weight:700}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper b{min-width:12px;text-align:center;font-variant-numeric:tabular-nums}
+.stepper .btn{min-width:30px;padding:2px 0;line-height:1.1;font-size:15px}
+.stepper .btn[disabled]{opacity:.3;pointer-events:none}
 
 /* ---------- fight night ---------- */
 .fn-banner{border-radius:var(--r);border:1px solid var(--blood);background:var(--blood-wash);
@@ -250,6 +261,9 @@ main{padding:14px 16px 24px;display:flex;flex-direction:column;gap:14px}
 .set label small{display:block;color:var(--muted);font-size:11.5px;line-height:1.3}
 .set input{text-align:right;padding:6px 8px;font-family:"JetBrains Mono",monospace;font-size:13px}
 .set.off{opacity:.45}
+.set .locked{text-align:right;font-family:"JetBrains Mono",monospace;font-size:13px;
+  color:var(--muted);padding:6px 8px}
+.locked-card{border-color:var(--belt)}
 .toggle{width:40px;height:23px;border-radius:12px;background:var(--surface-3);position:relative;
   border:1px solid var(--line);transition:background .15s ease;flex-shrink:0}
 .toggle[aria-pressed="true"]{background:var(--good);border-color:transparent}
@@ -299,7 +313,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;
 <div id="app"></div>
 
 <script id="league-state" type="application/json">
-{"v":1,"rev":2,"seed":false,"league":{"name":"The Fight Camp","code":"UFC-4K2Q","rosterSize":10,"pickHours":8,"draftTs":1788566400000,"commissioner":"m1","draftMode":"live","syncId":"b64b9726e8622272"},"managers":[{"id":"m1","name":"Parker","color":"#B8332C","claimed":false},{"id":"m2","name":"Cian","color":"#26548F","claimed":false},{"id":"m3","name":"Daniel","color":"#2C7A57","claimed":false},{"id":"m4","name":"Chris","color":"#9C7A26","claimed":false},{"id":"m5","name":"Jackson","color":"#6D4C9F","claimed":false},{"id":"m6","name":"Hugh","color":"#B5651D","claimed":false},{"id":"m7","name":"Mark","color":"#0F7C8A","claimed":false}],"picks":[],"rosters":{},"banked":{},"log":[],"trades":[],"scoring":{"appear":25,"winDec":50,"winSub":80,"winKo":90,"fin1":30,"fin2":20,"fin3":10,"fin4":5,"lossDec":-10,"lossFin":-20,"draw":0,"perf":25,"titleMult":1.25,"missWeight":-20,"statsOn":true,"sig":0.4,"td":4,"kd":12,"subatt":5,"ctrl":1.5,"oppC":2,"oppT5":1.75,"oppT10":1.5,"oppT15":1.25,"oppUR":1}}
+{"v":1,"rev":2,"seed":false,"league":{"name":"The Fight Camp","code":"UFC-4K2Q","rosterSize":10,"pickHours":8,"draftTs":1788566400000,"commissioner":"m1","draftMode":"pre","syncId":"b64b9726e8622272"},"managers":[{"id":"m1","name":"Parker","color":"#B8332C","claimed":false},{"id":"m2","name":"Cian","color":"#26548F","claimed":false},{"id":"m3","name":"Daniel","color":"#2C7A57","claimed":false},{"id":"m4","name":"Chris","color":"#9C7A26","claimed":false},{"id":"m5","name":"Jackson","color":"#6D4C9F","claimed":false},{"id":"m6","name":"Hugh","color":"#B5651D","claimed":false},{"id":"m7","name":"Mark","color":"#0F7C8A","claimed":false}],"picks":[],"rosters":{},"banked":{},"log":[],"trades":[],"scoring":{"appear":25,"winDec":50,"winSub":80,"winKo":90,"fin1":30,"fin2":20,"fin3":10,"fin4":5,"lossDec":-10,"lossFin":-20,"draw":0,"perf":25,"titleMult":1.25,"missWeight":-20,"statsOn":true,"sig":0.4,"td":4,"kd":12,"subatt":5,"ctrl":1.5,"oppC":2,"oppT5":1.75,"oppT10":1.5,"oppT15":1.25,"oppUR":1,"foulEye":-15,"foulGroin":-10,"foulOther":-8,"foulPoint":-25},"fouls":{}}
 </script>
 
 <!-- Filled by build_site.py when self-hosted. Empty = no live sync. -->
@@ -448,7 +462,9 @@ function loadState(){
     var raw=localStorage.getItem(LOCAL_KEY);
     if(raw){var l=JSON.parse(raw); if(l && l.rev>=embedded.rev) embedded=l;}
   }catch(e){}
-  S=embedded;
+  /* Same shape guarantees as a state arriving from Firebase: fill in settings
+     that did not exist when this league was last written. */
+  S=normalizeState(embedded);
   if(S.seed && !S.picks.length) seedDraft();
   try{ME=localStorage.getItem(LOCAL_KEY+"-me");}catch(e){}
   if(ME && !S.managers.some(function(m){return m.id===ME;})) ME=null;
@@ -494,6 +510,15 @@ function commit(msg){
    cannot silently erase each other. */
 var syncMode="local", fbRef=null;
 
+/* Every scoring key with its default. A league that has been running since
+   before a setting existed still has to score correctly, so anything missing is
+   filled in here rather than arriving as NaN halfway down a scorecard. */
+var DEFAULT_SCORING={appear:25,winDec:50,winSub:80,winKo:90,fin1:30,fin2:20,fin3:10,fin4:5,
+  lossDec:-10,lossFin:-20,draw:0,perf:25,titleMult:1.25,missWeight:-20,
+  statsOn:true,sig:0.4,td:4,kd:12,subatt:5,ctrl:1.5,
+  oppC:2,oppT5:1.75,oppT10:1.5,oppT15:1.25,oppUR:1,
+  foulEye:-15,foulGroin:-10,foulOther:-8,foulPoint:-25};
+
 function normalizeState(v){
   /* Firebase drops empty objects and arrays, so put them back before anything
      iterates over them. */
@@ -505,8 +530,29 @@ function normalizeState(v){
   v.log     = v.log     || [];
   v.managers= v.managers|| [];
   v.scoring = v.scoring || {};
+  v.fouls   = v.fouls   || {};
   v.league  = v.league  || {};
+  for(var k in DEFAULT_SCORING){
+    if(v.scoring[k]===undefined || v.scoring[k]===null) v.scoring[k]=DEFAULT_SCORING[k];
+  }
+  /* A draft only counts as running once someone deliberately started it. State
+     written before the start button existed says "live" with no start stamp —
+     that is a draft waiting to begin, not one in progress. */
+  if(v.league.draftMode==="live" && !v.league.startedTs) v.league.draftMode="pre";
+  if(!v.league.draftMode) v.league.draftMode="pre";
   return v;
+}
+/* One seat runs the league: the draft clock and the scoring are theirs alone.
+   Everyone else sees the same screens read-only. */
+function isCommish(){ return !!ME && ME===S.league.commissioner; }
+function commishName(){ var m=mgr(S.league.commissioner); return m?m.name:"the commissioner"; }
+/* Guard for anything only the commissioner may do. The controls are hidden from
+   everyone else, but a hidden button is not a locked one — every write checks. */
+function commishOnly(){
+  if(isCommish()) return true;
+  toast("Only "+commishName()+" can do that");
+  render();
+  return false;
 }
 function adoptRemote(v){
   v = normalizeState(v);
@@ -621,8 +667,35 @@ function boutPoints(b,fid){
       out = scaled;
     }
   }
+  /* Fouls land flat, outside the opponent multiplier. An eye poke is an eye
+     poke whoever it lands on — it should not cost less against a prospect than
+     against the champion. */
+  var fl=foulsOf(b.id,fid);
+  if(fl.eye)   add("Eye poke"+(fl.eye>1?" ×"+fl.eye:""), round1(fl.eye*sc.foulEye));
+  if(fl.groin) add("Low blow"+(fl.groin>1?" ×"+fl.groin:""), round1(fl.groin*sc.foulGroin));
+  if(fl.other) add("Other foul"+(fl.other>1?" ×"+fl.other:""), round1(fl.other*sc.foulOther));
+  if(fl.pt)    add("Point deducted"+(fl.pt>1?" ×"+fl.pt:""), round1(fl.pt*sc.foulPoint));
   if(b.miss===fid) add("Missed weight", sc.missWeight);
   return {pts:round1(out),lines:lines};
+}
+var FOUL_KINDS=[["eye","Eye poke"],["groin","Low blow"],
+                ["other","Other foul"],["pt","Point deducted"]];
+function foulsOf(bid,fid){
+  var f=(S.fouls&&S.fouls[bid]&&S.fouls[bid][fid])||{};
+  return {eye:f.eye||0, groin:f.groin||0, other:f.other||0, pt:f.pt||0};
+}
+function setFoul(bid,fid,kind,delta){
+  var cur=foulsOf(bid,fid), n=Math.max(0,Math.min(9,(cur[kind]||0)+delta));
+  if(n===cur[kind]) return false;
+  cur[kind]=n;
+  S.fouls=S.fouls||{};
+  if(cur.eye||cur.groin||cur.other||cur.pt){
+    S.fouls[bid]=S.fouls[bid]||{}; S.fouls[bid][fid]=cur;
+  } else if(S.fouls[bid]){
+    delete S.fouls[bid][fid];
+    if(!Object.keys(S.fouls[bid]).length) delete S.fouls[bid];
+  }
+  return true;
 }
 function round1(n){return Math.round(n*10)/10;}
 function fighterPoints(fid,since){
@@ -705,9 +778,10 @@ function fmt(n){return (n>0?"+":"")+n.toFixed(1);}
 
 /* ============================ views ============================ */
 /* ---- freeze-frame silhouettes ----
-   Pictogram figures caught at the moment of impact, with streaks trailing the
-   strike the way a long exposure smears it. Drawn as stroked paths so they stay
-   crisp at any size and cost a few hundred bytes each. */
+   Original figures drawn from scratch — anatomy blocked out as tapered limbs,
+   then flattened to filled polygons — caught at the moment of impact, with
+   streaks trailing the strike the way a long exposure smears it. Pure geometry
+   in currentColor, so they take the theme and stay crisp at any size. */
 var POSES={"cross":"<svg viewBox=\"166 142 440 604\" fill=\"currentColor\" aria-hidden=\"true\"><g class=\"streak\"><polygon points=\"372,298 452,305 523,314 525,298 452,295 372,294\"/><ellipse cx=\"372\" cy=\"296\" rx=\"2\" ry=\"2\"/><ellipse cx=\"452\" cy=\"300\" rx=\"5\" ry=\"5\"/><ellipse cx=\"524\" cy=\"306\" rx=\"8\" ry=\"8\"/><polygon points=\"378,340 456,341 529,338 527,322 456,331 378,336\"/><ellipse cx=\"378\" cy=\"338\" rx=\"2\" ry=\"2\"/><ellipse cx=\"456\" cy=\"336\" rx=\"5\" ry=\"5\"/><ellipse cx=\"528\" cy=\"330\" rx=\"8\" ry=\"8\"/><polygon points=\"400,264 467,273 529,286 531,270 469,263 400,260\"/><ellipse cx=\"400\" cy=\"262\" rx=\"2\" ry=\"2\"/><ellipse cx=\"468\" cy=\"268\" rx=\"5\" ry=\"5\"/><ellipse cx=\"530\" cy=\"278\" rx=\"8\" ry=\"8\"/></g><polygon points=\"255,461 235,595 255,709 285,707 285,601 341,487\"/><ellipse cx=\"298\" cy=\"474\" rx=\"45\" ry=\"45\"/><ellipse cx=\"260\" cy=\"598\" rx=\"25\" ry=\"25\"/><ellipse cx=\"270\" cy=\"708\" rx=\"15\" ry=\"15\"/><polygon points=\"244,702 304,696 310,732 236,732\"/><polygon points=\"296,500 394,584 479,662 501,642 430,552 360,444\"/><ellipse cx=\"328\" cy=\"472\" rx=\"43\" ry=\"43\"/><ellipse cx=\"412\" cy=\"568\" rx=\"24\" ry=\"24\"/><ellipse cx=\"490\" cy=\"652\" rx=\"15\" ry=\"15\"/><polygon points=\"474,642 532,670 518,702 462,674\"/><polygon points=\"357,471 342,399 349,328 346,302 238,302 235,336 258,409 259,481\"/><ellipse cx=\"308\" cy=\"476\" rx=\"49\" ry=\"49\"/><ellipse cx=\"300\" cy=\"404\" rx=\"42\" ry=\"42\"/><ellipse cx=\"292\" cy=\"332\" rx=\"57\" ry=\"57\"/><ellipse cx=\"292\" cy=\"302\" rx=\"54\" ry=\"54\"/><polygon points=\"327,341 438,346 544,328 540,296 438,306 333,287\"/><ellipse cx=\"330\" cy=\"314\" rx=\"27\" ry=\"27\"/><ellipse cx=\"438\" cy=\"326\" rx=\"20\" ry=\"20\"/><ellipse cx=\"542\" cy=\"312\" rx=\"16\" ry=\"16\"/><ellipse cx=\"556\" cy=\"314\" rx=\"36\" ry=\"36\"/><polygon points=\"232,304 211,363 250,315 226,301 185,389 268,336\"/><ellipse cx=\"250\" cy=\"320\" rx=\"24\" ry=\"24\"/><ellipse cx=\"198\" cy=\"376\" rx=\"18\" ry=\"18\"/><ellipse cx=\"238\" cy=\"308\" rx=\"14\" ry=\"14\"/><ellipse cx=\"240\" cy=\"300\" rx=\"28\" ry=\"28\"/><ellipse cx=\"258\" cy=\"197\" rx=\"34\" ry=\"41\"/><ellipse cx=\"253\" cy=\"226\" rx=\"22\" ry=\"14\"/></svg>","kick":"<svg viewBox=\"142 136 504 610\" fill=\"currentColor\" aria-hidden=\"true\"><g class=\"streak\"><polygon points=\"405,454 499,396 595,324 585,312 493,388 403,450\"/><ellipse cx=\"404\" cy=\"452\" rx=\"2\" ry=\"2\"/><ellipse cx=\"496\" cy=\"392\" rx=\"5\" ry=\"5\"/><ellipse cx=\"590\" cy=\"318\" rx=\"8\" ry=\"8\"/><polygon points=\"433,502 527,442 619,370 609,358 521,434 431,498\"/><ellipse cx=\"432\" cy=\"500\" rx=\"2\" ry=\"2\"/><ellipse cx=\"524\" cy=\"438\" rx=\"5\" ry=\"5\"/><ellipse cx=\"614\" cy=\"364\" rx=\"8\" ry=\"8\"/><polygon points=\"381,408 459,362 541,306 531,294 453,354 379,404\"/><ellipse cx=\"380\" cy=\"406\" rx=\"2\" ry=\"2\"/><ellipse cx=\"456\" cy=\"358\" rx=\"5\" ry=\"5\"/><ellipse cx=\"536\" cy=\"300\" rx=\"8\" ry=\"8\"/></g><polygon points=\"253,464 245,596 263,709 293,707 295,600 343,484\"/><ellipse cx=\"298\" cy=\"474\" rx=\"46\" ry=\"46\"/><ellipse cx=\"270\" cy=\"598\" rx=\"25\" ry=\"25\"/><ellipse cx=\"278\" cy=\"708\" rx=\"15\" ry=\"15\"/><polygon points=\"252,702 312,696 320,732 242,732\"/><polygon points=\"350,473 335,398 335,323 331,296 225,304 225,337 249,410 250,483\"/><ellipse cx=\"300\" cy=\"478\" rx=\"50\" ry=\"50\"/><ellipse cx=\"292\" cy=\"404\" rx=\"43\" ry=\"43\"/><ellipse cx=\"280\" cy=\"330\" rx=\"56\" ry=\"56\"/><ellipse cx=\"278\" cy=\"300\" rx=\"53\" ry=\"53\"/><polygon points=\"345,513 470,429 579,319 557,293 438,383 303,427\"/><ellipse cx=\"324\" cy=\"470\" rx=\"48\" ry=\"48\"/><ellipse cx=\"454\" cy=\"406\" rx=\"28\" ry=\"28\"/><ellipse cx=\"568\" cy=\"306\" rx=\"17\" ry=\"17\"/><polygon points=\"558,292 618,258 632,288 574,320\"/><polygon points=\"337,326 410,259 384,178 356,186 374,245 307,286\"/><ellipse cx=\"322\" cy=\"306\" rx=\"25\" ry=\"25\"/><ellipse cx=\"392\" cy=\"252\" rx=\"19\" ry=\"19\"/><ellipse cx=\"370\" cy=\"182\" rx=\"15\" ry=\"15\"/><ellipse cx=\"372\" cy=\"180\" rx=\"30\" ry=\"30\"/><polygon points=\"221,293 157,356 185,433 211,423 191,368 251,331\"/><ellipse cx=\"236\" cy=\"312\" rx=\"24\" ry=\"24\"/><ellipse cx=\"174\" cy=\"362\" rx=\"18\" ry=\"18\"/><ellipse cx=\"198\" cy=\"428\" rx=\"14\" ry=\"14\"/><ellipse cx=\"199\" cy=\"427\" rx=\"29\" ry=\"29\"/><ellipse cx=\"250\" cy=\"195\" rx=\"34\" ry=\"41\"/><ellipse cx=\"257\" cy=\"223\" rx=\"22\" ry=\"14\"/></svg>","shot":"<svg viewBox=\"166 321 500 437\" fill=\"currentColor\" aria-hidden=\"true\"><g class=\"streak\"><polygon points=\"392,384 456,383 509,390 511,374 456,373 392,380\"/><ellipse cx=\"392\" cy=\"382\" rx=\"2\" ry=\"2\"/><ellipse cx=\"456\" cy=\"378\" rx=\"5\" ry=\"5\"/><ellipse cx=\"510\" cy=\"382\" rx=\"8\" ry=\"8\"/><polygon points=\"408,430 468,429 515,436 517,420 468,419 408,426\"/><ellipse cx=\"408\" cy=\"428\" rx=\"2\" ry=\"2\"/><ellipse cx=\"468\" cy=\"424\" rx=\"5\" ry=\"5\"/><ellipse cx=\"516\" cy=\"428\" rx=\"8\" ry=\"8\"/><polygon points=\"414,340 469,345 514,360 518,344 471,335 414,336\"/><ellipse cx=\"414\" cy=\"338\" rx=\"2\" ry=\"2\"/><ellipse cx=\"470\" cy=\"340\" rx=\"5\" ry=\"5\"/><ellipse cx=\"516\" cy=\"352\" rx=\"8\" ry=\"8\"/></g><polygon points=\"281,521 221,632 200,717 228,727 263,656 351,575\"/><ellipse cx=\"316\" cy=\"548\" rx=\"44\" ry=\"44\"/><ellipse cx=\"242\" cy=\"644\" rx=\"24\" ry=\"24\"/><ellipse cx=\"214\" cy=\"722\" rx=\"15\" ry=\"15\"/><polygon points=\"186,714 240,700 250,732 180,738\"/><polygon points=\"291,575 364,657 363,722 393,726 412,643 369,529\"/><ellipse cx=\"330\" cy=\"552\" rx=\"45\" ry=\"45\"/><ellipse cx=\"388\" cy=\"650\" rx=\"25\" ry=\"25\"/><ellipse cx=\"378\" cy=\"724\" rx=\"15\" ry=\"15\"/><polygon points=\"350,718 410,712 416,744 344,744\"/><polygon points=\"348,597 409,551 463,499 484,476 440,416 413,429 343,465 284,515\"/><ellipse cx=\"316\" cy=\"556\" rx=\"52\" ry=\"52\"/><ellipse cx=\"376\" cy=\"508\" rx=\"54\" ry=\"54\"/><ellipse cx=\"438\" cy=\"464\" rx=\"43\" ry=\"43\"/><ellipse cx=\"462\" cy=\"446\" rx=\"37\" ry=\"37\"/><polygon points=\"465,466 542,489 610,502 618,470 554,451 483,418\"/><ellipse cx=\"474\" cy=\"442\" rx=\"26\" ry=\"26\"/><ellipse cx=\"548\" cy=\"470\" rx=\"20\" ry=\"20\"/><ellipse cx=\"614\" cy=\"486\" rx=\"16\" ry=\"16\"/><ellipse cx=\"624\" cy=\"486\" rx=\"28\" ry=\"28\"/><polygon points=\"445,505 524,567 587,606 605,582 548,537 479,467\"/><ellipse cx=\"462\" cy=\"486\" rx=\"25\" ry=\"25\"/><ellipse cx=\"536\" cy=\"552\" rx=\"19\" ry=\"19\"/><ellipse cx=\"596\" cy=\"594\" rx=\"15\" ry=\"15\"/><ellipse cx=\"604\" cy=\"598\" rx=\"28\" ry=\"28\"/><ellipse cx=\"528\" cy=\"391\" rx=\"33\" ry=\"40\"/><ellipse cx=\"538\" cy=\"372\" rx=\"21\" ry=\"14\"/></svg>"};
 function art(pose,style){
   return '<div class="art" style="'+style+'">'+(POSES[pose]||"")+'</div>';
@@ -947,6 +1021,31 @@ function draftOrder(){
 function draftView(){
   var seq=draftOrder(), n=S.picks.length, live=S.league.draftMode==="live";
   var out="";
+  if(S.league.draftMode==="pre"){
+    out+='<div class="clock hero">'
+      +art("kick","right:4px;top:4px;width:186px;height:226px")
+      +'<div class="eyebrow">'+S.managers.length+' managers · '+S.league.rosterSize+' rounds · snake</div>'
+      +'<div class="big">The draft hasn\'t started</div>'
+      +'<div class="timer">Nobody is on the clock. The '+S.league.pickHours
+      +'h pick clock starts the moment '+esc(commishName())+' opens it.</div>'
+      +(isCommish()
+        ? '<div class="btn-row">'
+          +'<button class="btn primary" data-act="start-draft">Start the draft</button>'
+          +'<button class="btn ghost sm" data-act="shuffle-order">Shuffle the order</button></div>'
+        : '')
+      +'</div>'
+      +'<div class="card"><div class="card-h"><h2>Draft order</h2>'
+      +'<span class="hint">round 1</span></div><div class="stand">'
+      +S.managers.map(function(m,i){
+         return '<div class="stand-row'+(m.id===ME?" me":"")+'">'
+           +'<div class="rank">'+(i+1)+'</div><div class="who"><b>'+esc(m.name)+'</b>'
+           +'<span>picks '+(i+1)+' and '+(S.managers.length*2-i)+'</span></div></div>';
+       }).join("")+'</div>'
+      +'<p class="note">Snake order: it reverses every round, so the last pick in '
+      +'round one gets the first pick in round two.'
+      +(isCommish()?' Shuffle it as many times as you like before you start — once the '
+        +'draft is open the order is fixed.':'')+'</p></div>';
+  }
   if(live && n<seq.length){
     var onClock=seq[n], you=onClock===ME;
     var deadline=(n?S.picks[n-1].ts:S.league.draftTs)+S.league.pickHours*36e5;
@@ -990,10 +1089,14 @@ function draftView(){
     out+='</div></div>';
   }
   out+='<p class="note">Snake order reverses each round. Every fighter can be on one roster only.</p></div>';
-  out+='<div class="card"><div class="card-h"><h2>Commissioner</h2></div>'
-    +'<div style="padding:0 14px 14px" class="btn-row">'
-    +'<button class="btn" data-act="restart-draft">Clear rosters &amp; run a live draft</button></div>'
-    +'<p class="note">Wipes all picks and puts pick 1.01 on the clock so you can walk through the draft flow.</p></div>';
+  if(isCommish() && S.league.draftMode!=="pre"){
+    out+='<div class="card"><div class="card-h"><h2>Commissioner</h2>'
+      +'<span class="hint">only you see this</span></div>'
+      +'<div style="padding:0 14px 14px" class="btn-row">'
+      +'<button class="btn" data-act="restart-draft">Clear rosters &amp; reopen the draft</button></div>'
+      +'<p class="note">Wipes every pick and roster and puts the league back to '
+      +'not-yet-started, so you can shuffle the order and start again.</p></div>';
+  }
   return out;
 }
 
@@ -1077,13 +1180,28 @@ function playersView(){
 
 /* ---- rules / scoring ---- */
 function setRow(key,label,sub,off){
-  return '<div class="set'+(off?" off":"")+'"><label for="s-'+key+'">'+label
-    +(sub?'<small>'+sub+'</small>':'')+'</label>'
-    +'<input id="s-'+key+'" type="number" step="0.1" data-set="'+key+'" value="'+S.scoring[key]+'"></div>';
+  var head='<div class="set'+(off?" off":"")+'"><label for="s-'+key+'">'+label
+    +(sub?'<small>'+sub+'</small>':'')+'</label>';
+  if(!isCommish()) return head+'<span class="locked">'+S.scoring[key]+'</span></div>';
+  return head+'<input id="s-'+key+'" type="number" step="0.1" data-set="'+key
+    +'" value="'+S.scoring[key]+'"></div>';
+}
+function lgRow(key,label,sub){
+  var head='<div class="set"><label>'+label+(sub?'<small>'+sub+'</small>':'')+'</label>';
+  if(!isCommish()) return head+'<span class="locked">'+S.league[key]+'</span></div>';
+  return head+'<input type="number" data-lg="'+key+'" value="'+S.league[key]+'"></div>';
 }
 function rulesView(){
   var sc=S.scoring;
-  return '<div class="card"><div class="card-h"><h2>Every fight</h2>'
+  return (isCommish()
+      ? '<p class="note" style="padding:0 2px 10px"><b>You set the scoring.</b> '
+        +'Every change rescores the whole season for everyone the moment you make it.</p>'
+      : '<div class="card locked-card"><div class="card-h"><h2>Read only</h2>'
+        +'<span class="hint">'+esc(commishName())+'’s league</span></div>'
+        +'<p class="note">These are the numbers the season is scored on. '
+        +esc(commishName())+' is the commissioner and is the only seat that can '
+        +'change them — take it up in the group chat.</p></div>')
+    +'<div class="card"><div class="card-h"><h2>Every fight</h2>'
     +'<span class="hint">win or lose</span></div>'
     +setRow("appear","Stepping in the cage","Awarded for competing at all")
     +'<p class="note">Activity is the whole game in fantasy MMA. A fighter who '
@@ -1117,8 +1235,10 @@ function rulesView(){
     +'<p class="note">Draws and no-contests score zero. A fighter who withdraws from a booked bout '
     +'scores nothing rather than a penalty.</p></div>'
     +'<div class="card"><div class="card-h"><h2>Fight statistics</h2>'
-    +'<button class="toggle" data-act="stats-toggle" aria-pressed="'+(sc.statsOn)
-    +'" aria-label="Toggle stat scoring"><i></i></button></div>'
+    +(isCommish()
+       ? '<button class="toggle" data-act="stats-toggle" aria-pressed="'+(sc.statsOn)
+         +'" aria-label="Toggle stat scoring"><i></i></button>'
+       : '<span class="hint">'+(sc.statsOn?"on":"off")+'</span>')+'</div>'
     +setRow("sig","Per significant strike landed",null,!sc.statsOn)
     +setRow("td","Per takedown landed",null,!sc.statsOn)
     +setRow("kd","Per knockdown",null,!sc.statsOn)
@@ -1128,17 +1248,31 @@ function rulesView(){
     +'opponent quality with the rest. Knockdowns and submission attempts are on too — set '
     +'either to 0 to score strikes, takedowns and control time alone. Any change here '
     +'rescores the whole season instantly.</p></div>'
+    +'<div class="card"><div class="card-h"><h2>Fouls</h2>'
+    +'<span class="hint">logged by hand</span></div>'
+    +setRow("foulEye","Eye poke")
+    +setRow("foulGroin","Low blow")
+    +setRow("foulOther","Other foul","Fence grab, illegal knee, headbutt, glove grab")
+    +setRow("foulPoint","Point deducted","On top of the foul itself")
+    +'<p class="note">Nobody publishes fouls as data, so '+esc(commishName())+' logs them '
+    +'on the scorecard after the card — open a fighter, find the fight, tap the counters. '
+    +'Fouls are <b>flat</b>: they sit outside the opponent multiplier, because poking the '
+    +'champion in the eye is the same offence as poking anyone else. A referee taking a '
+    +'point costs the deduction <i>and</i> the foul that caused it.</p></div>'
     +'<div class="card"><div class="card-h"><h2>League</h2></div>'
-    +'<div class="set"><label>Roster size</label><input type="number" data-lg="rosterSize" value="'+S.league.rosterSize+'"></div>'
-    +'<div class="set"><label>Pick clock<small>Hours before an auto-pick</small></label>'
-    +'<input type="number" data-lg="pickHours" value="'+S.league.pickHours+'"></div>'
+    +lgRow("rosterSize","Roster size")
+    +lgRow("pickHours","Pick clock","Hours before an auto-pick")
     +'<p class="note"><b>Season:</b> rolling 12 months from draft day — '
     +new Date(DRAFT_TS).toLocaleDateString()+' to '+new Date(SEASON_END).toLocaleDateString()+'. '
     +'Highest cumulative total wins.</p></div>'
     +'<div class="card"><div class="card-h"><h2>About this build</h2></div>'
-    +'<p class="note">Fighters, cards and results here are <b>demo data</b> generated for the prototype — '
-    +'real names, invented bouts. The production version scrapes cards, results and fight statistics '
-    +'from public sources after each event and posts scores once the card ends.</p></div>';
+    +'<p class="note">'+(REAL
+      ? 'Fighters, cards, results and fight statistics are scraped from public sources after '
+        +'every event — scores post once a card is over, not live. Rankings follow the official '
+        +'divisional rankings. Fouls are the one thing nobody publishes as data, so those are '
+        +'logged by hand.'
+      : 'Fighters, cards and results here are <b>demo data</b> generated for the prototype — '
+        +'real names, invented bouts.')+'</p></div>';
 }
 
 /* ---- roster poster ----
@@ -1256,7 +1390,27 @@ function scorecard(x,fid){
       }).join("")
     +'<div class="sc-total"><span>Total</span><span>'+bp.pts.toFixed(1)+'</span></div>'
     +(b.win===fid?'<div class="sc-stamp">Win</div>':'')
+    +foulEditor(b,fid)
     +'</div>';
+}
+/* Referees call fouls; nobody publishes them as data. So the commissioner logs
+   them by hand here and every scorecard, total and standing rescores at once. */
+function foulEditor(b,fid){
+  if(!b.done) return "";
+  if(!isCommish()) return "";
+  var f=foulsOf(b.id,fid);
+  return '<div class="fouls"><div class="fouls-h">Fouls <span>commissioner</span></div>'
+    +FOUL_KINDS.map(function(k){
+      var n=f[k[0]];
+      return '<div class="foul-row'+(n?" on":"")+'"><span>'+k[1]+'</span>'
+        +'<span class="stepper">'
+        +'<button class="btn sm ghost" data-act="foul" data-b="'+b.id+'" data-fi="'+fid
+          +'" data-k="'+k[0]+'" data-d="-1" aria-label="Fewer '+k[1]+'"'+(n?"":" disabled")+'>−</button>'
+        +'<b>'+n+'</b>'
+        +'<button class="btn sm ghost" data-act="foul" data-b="'+b.id+'" data-fi="'+fid
+          +'" data-k="'+k[0]+'" data-d="1" aria-label="More '+k[1]+'">+</button>'
+        +'</span></div>';
+    }).join("")+'</div>';
 }
 
 /* ---- sheets ---- */
@@ -1285,7 +1439,9 @@ function pickSheet(){
         +'<span class="chip red">Draft</span></button>';
     }).join("")+'</div></div>');
 }
+var sheetFighter=null;
 function fighterSheet(fid){
+  sheetFighter=fid;
   var f=BY_ID[fid], own=ownerOf(fid), entry=(S.rosters[own]||[]).filter(function(e){return e.f===fid;})[0];
   var since=entry?entry.since:DRAFT_TS;
   var hist=(BOUT_BY_FIGHTER[fid]||[]).filter(function(x){return x.e.ts>=since;});
@@ -1419,11 +1575,42 @@ document.addEventListener("click",function(ev){
     logIt(mgr(who).name+" auto-picked "+best.name);
     commit(mgr(who).name+" took "+best.name); return;
   }
+  if(act==="start-draft"){
+    if(!commishOnly()) return;
+    S.league.draftMode="live";
+    S.league.draftTs=Date.now();
+    S.league.startedTs=Date.now();
+    logIt(mgr(ME).name+" started the draft");
+    commit("Draft is open — "+mgr(draftOrder()[S.picks.length]).name+" is on the clock");
+    return;
+  }
+  if(act==="shuffle-order"){
+    if(!commishOnly()) return;
+    if(S.league.draftMode!=="pre"){ toast("The order is fixed once the draft is open"); return; }
+    for(var si=S.managers.length-1;si>0;si--){
+      var sj=Math.floor(Math.random()*(si+1)), tmp=S.managers[si];
+      S.managers[si]=S.managers[sj]; S.managers[sj]=tmp;
+    }
+    logIt(mgr(ME).name+" shuffled the draft order");
+    commit(mgr(S.managers[0].id).name+" picks first"); return;
+  }
+  if(act==="foul"){
+    if(!commishOnly()) return;
+    if(!setFoul(el.dataset.b, el.dataset.fi, el.dataset.k, parseInt(el.dataset.d,10))) return;
+    var fn=(BY_ID[el.dataset.fi]||{}).name||"fighter";
+    logIt(mgr(ME).name+" updated fouls for "+fn);
+    commit("Fouls updated — "+fn);
+    /* commit() re-renders the page behind the sheet; redraw the sheet too so the
+       counter and the running total move under the finger that tapped them. */
+    if(sheetFighter){ closeSheet(); fighterSheet(sheetFighter); }
+    return;
+  }
   if(act==="restart-draft"){
+    if(!commishOnly()) return;
     S.picks=[]; S.rosters={}; S.banked={}; S.trades=[]; S.seed=false;
-    S.league.draftMode="live"; S.league.draftTs=Date.now();
-    logIt("Commissioner restarted the draft");
-    commit("Draft reset — pick 1.01 is on the clock"); return;
+    S.league.draftMode="pre"; delete S.league.startedTs;
+    logIt(mgr(ME).name+" reopened the draft");
+    commit("Draft reset — nobody is on the clock"); return;
   }
   if(act==="add"){
     var fid=el.dataset.f;
@@ -1466,7 +1653,8 @@ document.addEventListener("click",function(ev){
     var t2=S.trades.filter(function(t){return t.id===el.dataset.t;})[0];
     if(t2) t2.status="declined"; commit("Trade declined"); return;
   }
-  if(act==="stats-toggle"){ S.scoring.statsOn=!S.scoring.statsOn; commit(
+  if(act==="stats-toggle"){ if(!commishOnly()) return;
+    S.scoring.statsOn=!S.scoring.statsOn; commit(
     S.scoring.statsOn?"Stat scoring on — season rescored":"Stat scoring off"); return; }
 });
 function removeQuiet(mid,fid){
@@ -1485,9 +1673,11 @@ document.addEventListener("change",function(ev){
   if(t.id==="fa-div"){ faFilter.div=t.value; render(); return; }
   if(t.id==="pk-div"){ pickFilter.div=t.value; closeSheet(); pickSheet(); return; }
   if(t.id==="t-to"){ tradeDraft.to=t.value; tradeDraft.get=[]; closeSheet(); tradeSheet(); return; }
-  if(t.dataset.set){ var v=parseFloat(t.value); if(isNaN(v))return;
+  if(t.dataset.set){ if(!commishOnly()) return;
+    var v=parseFloat(t.value); if(isNaN(v))return;
     S.scoring[t.dataset.set]=v; commit("Scoring updated"); return; }
-  if(t.dataset.lg){ var v2=parseInt(t.value,10); if(isNaN(v2))return;
+  if(t.dataset.lg){ if(!commishOnly()) return;
+    var v2=parseInt(t.value,10); if(isNaN(v2))return;
     S.league[t.dataset.lg]=v2; commit("League settings updated"); return; }
 });
 setInterval(function(){
