@@ -1,5 +1,5 @@
 /* Octagon Draft service worker. Bumped on every deploy so old shells retire. */
-const VERSION = "1787939636";
+const VERSION = "1787969164";
 const SHELL = "octagon-" + VERSION;
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest",
                 "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
