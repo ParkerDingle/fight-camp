@@ -1,0 +1,19 @@
+# Goes in the fight-camp repo root. What belongs in the repo is the database
+# (it is the system of record) and the built site (it is what Pages serves).
+# Everything below is either rebuilt on every run or is scratch.
+
+# The fetched-page cache. Restored between runs by actions/cache, not by git —
+# it churns constantly and would be most of the repo within a month.
+pipeline/data/cache/
+
+# SQLite's side files. The database itself IS committed; these are the
+# uncheckpointed tail of it and are meaningless on their own.
+pipeline/data/*.db-wal
+pipeline/data/*.db-shm
+
+pipeline/data/pipeline.log
+pipeline/dist/
+pipeline/site/
+pipeline/.env
+__pycache__/
+*.pyc

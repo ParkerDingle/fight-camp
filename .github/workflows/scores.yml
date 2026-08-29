@@ -1,0 +1,138 @@
+# The league, running by itself.
+#
+# Everything this repo needs is in it: the scraper, the database, the page
+# template. GitHub runs the scraper on a schedule, rebuilds index.html and
+# commits the result — which is also the deploy, because Pages serves this
+# branch. No laptop has to be awake on a Sunday morning.
+#
+# The database is committed with every run. It is a few hundred KB and it is
+# the system of record: without it in the repo each run would start from an
+# empty database and re-scrape a year of cards.
+name: League
+
+on:
+  schedule:
+    # Cards finish late Saturday US time. Catch the results twice on Sunday,
+    # then once a day as the safety net for amended results and late cards.
+    - cron: "0 8 * * 0"
+    - cron: "0 14 * * 0"
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "which pipeline command to run"
+        type: choice
+        default: nightly
+        options: [nightly, post-event, roster, export, verify]
+
+# The job commits back to this branch, so it needs write access. Nothing else.
+permissions:
+  contents: write
+
+# Two runs writing the database at once would have one of them lose its work to
+# the other's push. Queue them instead.
+concurrency:
+  group: league
+  cancel-in-progress: false
+
+env:
+  DRAFT_DATE: "2026-09-05"
+  MANAGERS: "Parker,Cian,Daniel,Chris,Jackson,Hugh,Mark"
+  SEASON_START: "2025-09-01"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - run: pip install -r pipeline/requirements.txt
+
+      # Pages already fetched are not fetched again. This is politeness to
+      # ufcstats as much as speed: a nightly run that re-reads the whole index
+      # every time is how you get blocked.
+      - name: Restore the fetch cache
+        uses: actions/cache@v4
+        with:
+          path: pipeline/data/cache
+          key: ufc-cache-${{ github.run_id }}
+          restore-keys: ufc-cache-
+
+      - name: Scrape
+        working-directory: pipeline
+        env:
+          UFC_SCRAPER_CONTACT: ${{ secrets.UFC_SCRAPER_CONTACT || format('{0}@users.noreply.github.com', github.repository_owner) }}
+          # A shared runner is a datacenter address, which sites treat with more
+          # suspicion than a home connection. Ask for pages more slowly than the
+          # default rather than finding out the hard way.
+          UFC_MIN_INTERVAL: "3.0"
+          UFC_NTFY_TOPIC: ${{ secrets.UFC_NTFY_TOPIC }}
+          UFC_DISCORD_WEBHOOK: ${{ secrets.UFC_DISCORD_WEBHOOK }}
+          UFC_TELEGRAM_TOKEN: ${{ secrets.UFC_TELEGRAM_TOKEN }}
+          UFC_TELEGRAM_CHAT: ${{ secrets.UFC_TELEGRAM_CHAT }}
+        run: |
+          python pipeline.py "${{ inputs.job || 'nightly' }}" \
+            --since "$SEASON_START" --fighter-limit 40
+
+      # Who is under contract. One Wikipedia request, and it is what makes a
+      # newly signed fighter draftable and a released one unpickable.
+      - name: Refresh the roster
+        if: ${{ inputs.job != 'verify' }}
+        working-directory: pipeline
+        continue-on-error: true
+        env:
+          UFC_SCRAPER_CONTACT: ${{ secrets.UFC_SCRAPER_CONTACT || format('{0}@users.noreply.github.com', github.repository_owner) }}
+        run: python pipeline.py roster --since "$SEASON_START"
+
+      - name: Rebuild the page
+        if: ${{ inputs.job != 'verify' }}
+        working-directory: pipeline
+        run: |
+          python pipeline.py export --since "$SEASON_START"
+          python build_app.py --draft-date "$DRAFT_DATE" --managers "$MANAGERS"
+          python build_site.py --out ../_site
+
+      # SQLite keeps recent writes in a side file until the last connection
+      # closes. Fold them in, or the committed database is missing this run.
+      - name: Settle the database
+        run: |
+          python - <<'PY'
+          import sqlite3
+          con = sqlite3.connect("pipeline/data/ufc.db")
+          con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+          con.close()
+          PY
+
+      - name: Publish
+        if: ${{ inputs.job != 'verify' }}
+        run: |
+          cp -a _site/. .
+          rm -rf _site
+          git config user.name  "fight-camp bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+          else
+            git commit -m "League update: ${{ inputs.job || 'nightly' }} $(date -u +%Y-%m-%d)"
+            # Another run may have pushed while this one was scraping.
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push
+          fi
+
+      - name: What is in the database now
+        if: always()
+        working-directory: pipeline
+        run: |
+          {
+            echo '```'
+            python pipeline.py status || echo "status unavailable"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
