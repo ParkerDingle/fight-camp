@@ -352,6 +352,24 @@ class TestApplyRoster(unittest.TestCase):
         self.assertEqual(by_name["Derrick Lewis"]["act"], 1)
         self.assertEqual(by_name["Released Guy"]["act"], 0)
 
+    def test_a_debut_leaves_a_forwarding_address(self):
+        """Someone drafted him before he had ever fought. When the real record
+        arrives his id changes, and without a forwarding address the manager
+        holding the old one silently loses a fighter."""
+        normalize.apply_roster(self.con, {"Heavyweight": ["Alvin Hines"]})
+        placeholder = self.con.execute(
+            "SELECT fighter_id FROM fighters WHERE name='Alvin Hines'").fetchone()[0]
+
+        self.con.execute("INSERT INTO fighters (fighter_id, name, updated_at) "
+                         "VALUES ('ddd000000000000d','Alvin Hines',0)")
+        normalize.apply_roster(self.con, {"Heavyweight": ["Alvin Hines"]})
+
+        alias = dict(self.con.execute("SELECT from_id, to_id FROM aliases"))
+        self.assertEqual(alias.get(placeholder), "ddd000000000000d")
+
+        payload = normalize.export(self.con, Path("/tmp/_alias_export.json"))
+        self.assertEqual(payload["alias"][placeholder], "ddd000000000000d")
+
     def test_a_broken_parse_leaves_last_weeks_roster_alone(self):
         """The dangerous failure is not an empty roster — it is a roster of
         strangers, which would bury the pool under placeholder duplicates."""

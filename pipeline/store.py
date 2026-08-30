@@ -78,6 +78,14 @@ CREATE TABLE IF NOT EXISTS flags (
   type       TEXT NOT NULL,               -- missed_weight | withdrew
   PRIMARY KEY (bout_id, fighter_id, type)
 );
+-- A fighter drafted before they had ever fought was carried under a temporary
+-- id. When the real record turns up, the old id has to keep resolving or the
+-- manager holding it silently loses a fighter.
+CREATE TABLE IF NOT EXISTS aliases (
+  from_id TEXT PRIMARY KEY,
+  to_id   TEXT NOT NULL,
+  at      REAL
+);
 CREATE TABLE IF NOT EXISTS runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT, started_at REAL, finished_at REAL, ok INTEGER, detail TEXT

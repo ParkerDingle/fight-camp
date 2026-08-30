@@ -178,6 +178,15 @@ def apply_roster(con, roster: dict[str, list[str]]) -> dict:
                     "ELSE division END WHERE fighter_id=?",
                     (now, division, fid))
                 matched += 1
+                # They may have been drafted last month under a temporary id,
+                # before they had ever fought. Leave a forwarding address so
+                # whoever holds that id keeps the fighter.
+                old = _roster_id(name)
+                if old != fid and con.execute(
+                        "SELECT 1 FROM fighters WHERE fighter_id=?", (old,)).fetchone():
+                    con.execute("INSERT OR REPLACE INTO aliases (from_id, to_id, at) "
+                                "VALUES (?,?,?)", (old, fid, now))
+                    log.info("%s now has a real record; %s -> %s", name, old, fid)
                 continue
             unmatched.append(f"{name} ({division})")
             con.execute(
@@ -191,8 +200,11 @@ def apply_roster(con, roster: dict[str, list[str]]) -> dict:
     # scraped record. If most of them do not, the name column moved or the
     # matcher broke, and applying this would bury the draft pool under hundreds
     # of duplicate placeholders. Leave last week's roster alone instead.
+    # A quarter of the roster failing to match is normal, not broken: plenty of
+    # contracted fighters have not fought inside the scraped window, and they
+    # are precisely who this pass exists to find. Half is not normal.
     total = matched + added
-    if total >= 50 and added > total * 0.25:
+    if total >= 50 and added > total * 0.45:
         con.rollback()
         log.error("roster: %s of %s names matched nothing — refusing to apply. "
                   "First few: %s", added, total, ", ".join(unmatched[:5]))
@@ -350,12 +362,17 @@ def export(con, path: Path | None = None, *, since: str | None = None) -> dict:
     # roster that drafted them, and their past results still have to add up.
     used = {f for ev in events for b in ev["bouts"] for f in (b["a"], b["b"])}
     used |= roster
+    alias = {r["from_id"]: r["to_id"] for r in
+             con.execute("SELECT from_id, to_id FROM aliases")
+             if r["to_id"] in fighters}
     payload = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source": "ufcstats.com + en.wikipedia.org",
         "fighters": [fighters[f] for f in sorted(used) if f in fighters],
         "events": events,
     }
+    if alias:
+        payload["alias"] = alias
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
     log.info("exported %s fighters (%s under contract) / %s events -> %s",

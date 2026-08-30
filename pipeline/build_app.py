@@ -72,8 +72,14 @@ def trim_to_season(payload: dict, draft_date: str, months: int,
                          if e["date"] and history_start.isoformat() <= e["date"]
                          <= end.isoformat()]
     used = {f for e in payload["events"] for b in e["bouts"] for f in (b["a"], b["b"])}
+    # Three reasons to keep a fighter: they fought inside the window, they are
+    # ranked, or they are under contract. The last one is what makes a champion
+    # coming back from a year out draftable — trimming to "who fought recently"
+    # is exactly the hole the roster pass exists to fill, and re-cutting it here
+    # would quietly undo that work.
     payload["fighters"] = [f for f in payload["fighters"]
-                           if f["id"] in used or f.get("rank") is not None]
+                           if f["id"] in used or f.get("rank") is not None
+                           or f.get("act") == 1]
 
     scoring = [e for e in payload["events"] if e["date"] >= start.isoformat()]
     print(f"  pool from {history_start} · scoring from {start} "

@@ -32,6 +32,50 @@ MANIFEST_LINK = (
     '<link rel="manifest" href="./manifest.webmanifest">\n'
     '<link rel="apple-touch-icon" href="./apple-touch-icon.png">\n')
 
+# The app template is authored for the Claude artifact wrapper, which supplies
+# the document shell. Served from a plain web host nothing does — and a page
+# with no doctype and no viewport renders in quirks mode at desktop width, then
+# gets shrunk to fit the phone. That is the single most visible way this build
+# can go wrong, so `verify_shell` below refuses to write a page without it.
+HEAD_OPEN = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+"""
+BODY_OPEN = "</head>\n<body>\n"
+DOC_CLOSE = "\n</body>\n</html>\n"
+
+# Leading <meta>, <link>, <title> and <style> belong in the head. The parser
+# tolerates them in the body, but theme-color — which paints the status bar
+# strip on an installed iPhone app — is only reliably honoured from the head.
+_HEAD_TAGS = re.compile(
+    r"\A(?:\s*(?:<!--.*?-->"
+    r"|<meta\b[^>]*>"
+    r"|<link\b[^>]*>"
+    r"|<title\b[^>]*>.*?</title>"
+    r"|<style\b[^>]*>.*?</style>))+", re.S | re.I)
+
+
+def split_head(html: str) -> tuple[str, str]:
+    m = _HEAD_TAGS.match(html)
+    return (m.group(0), html[m.end():]) if m else ("", html)
+
+
+def verify_shell(html: str) -> None:
+    """The page must be a real document. Getting this wrong is not subtle on a
+    phone — quirks mode renders at desktop width and the whole app arrives
+    shrunk — but it is completely invisible on a laptop, so assert it."""
+    problems = []
+    if not html.lstrip().lower().startswith("<!doctype html>"):
+        problems.append("no doctype (the page will render in quirks mode)")
+    if "width=device-width" not in html:
+        problems.append("no viewport meta (phones will render it at desktop width)")
+    if "<html" not in html[:200]:
+        problems.append("no <html> element")
+    if problems:
+        raise SystemExit("refusing to write a broken page:\n  - " + "\n  - ".join(problems))
+
 SW_REGISTER = """
 <script>
 /* Offline shell. Network-first for the page itself so a republished league is
@@ -144,7 +188,9 @@ def main(argv=None) -> int:
     sync_id = state["league"]["syncId"]
 
     html = html.replace("</style>", "</style>\n" + MANIFEST_LINK, 1)
-    html = html + SW_REGISTER
+    head, body = split_head(html)
+    html = HEAD_OPEN + head + BODY_OPEN + body + SW_REGISTER + DOC_CLOSE
+    verify_shell(html)
 
     # --- write the site --------------------------------------------------
     out = Path(args.out)
