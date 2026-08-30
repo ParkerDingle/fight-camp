@@ -55,6 +55,14 @@ jobs:
 
       - run: pip install -r pipeline/requirements.txt
 
+      # ufcstats serves a shared runner a JavaScript holding page rather than
+      # the site. A real browser is the fetcher's designed way out of that, so
+      # give it one — the plain-HTTP path is not available to us here.
+      - name: Install a browser for the scraper
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
       # Pages already fetched are not fetched again. This is politeness to
       # ufcstats as much as speed: a nightly run that re-reads the whole index
       # every time is how you get blocked.
@@ -65,9 +73,17 @@ jobs:
           key: ufc-cache-${{ github.run_id }}
           restore-keys: ufc-cache-
 
+      # ufcstats rate-limits datacenter addresses, and some days it simply will
+      # not talk to a GitHub runner. That must not stop the league publishing:
+      # the roster, the rankings and the rebuild below need nothing from it, and
+      # a card scraped a day late is far better than a site that stops updating
+      # and mails everyone about it. The outcome is reported in the summary.
       - name: Scrape
+        id: scrape
+        continue-on-error: true
         working-directory: pipeline
         env:
+          UFC_FORCE_BROWSER: "1"
           UFC_SCRAPER_CONTACT: ${{ secrets.UFC_SCRAPER_CONTACT || format('{0}@users.noreply.github.com', github.repository_owner) }}
           # A shared runner is a datacenter address, which sites treat with more
           # suspicion than a home connection. Ask for pages more slowly than the
@@ -125,6 +141,16 @@ jobs:
             # Another run may have pushed while this one was scraping.
             git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push
+          fi
+
+      - name: Say whether the scrape got through
+        if: always()
+        run: |
+          if [ "${{ steps.scrape.outcome }}" = "success" ]; then
+            echo "**Scrape:** ok" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning title=ufcstats unavailable::The results scrape was refused; the page was still rebuilt and published from what is already in the database."
+            echo "**Scrape:** refused by ufcstats — published from existing data" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: What is in the database now
