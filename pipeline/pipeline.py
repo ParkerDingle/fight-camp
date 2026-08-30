@@ -241,6 +241,19 @@ def cmd_backfill(args) -> int:
     return 1 if problems else 0
 
 
+def _index_or_none(fetcher: Fetcher, url: str, problems: list) -> list | None:
+    """Fetch and parse an events index, or record why not and carry on."""
+    try:
+        return ufcstats.parse_events_index(fetcher.get(url, force=True), url=url)
+    except BlockedError as exc:
+        problems.append(f"{url}: refused ({exc})")
+        log.warning("index unavailable: %s", exc)
+    except Exception as exc:
+        problems.append(f"{url}: {exc}")
+        log.warning("index unusable: %s", exc)
+    return None
+
+
 def cmd_nightly(args) -> int:
     con, fetcher = store.connect(), Fetcher()
     started, problems = time.time(), []
@@ -255,16 +268,19 @@ def cmd_nightly(args) -> int:
                 problems.append(f"{e['name']}: {exc}")
 
         # 2. newly announced cards
-        for e in ufcstats.parse_events_index(fetcher.get(config.EVENTS_UPCOMING,
-                                                         force=True),
-                                             url=config.EVENTS_UPCOMING):
+        # An index that will not load is a bad night, not a broken run: the
+        # rankings, the roster and the rebuild that follow do not need ufcstats
+        # at all, and a league that stops publishing because one site is
+        # rate-limiting a datacenter is worse than one that publishes what it
+        # has. Both indexes are therefore allowed to fail.
+        for e in _index_or_none(fetcher, config.EVENTS_UPCOMING, problems) or []:
             try:
                 scrape_event(con, fetcher, e["event_id"], e["url"], with_stats=False)
             except Exception as exc:
                 problems.append(f"{e['name']}: {exc}")
 
         # 3. recent completed cards we have never seen at all
-        index = ufcstats.parse_events_index(fetcher.get(config.EVENTS_COMPLETED, force=True))
+        index = _index_or_none(fetcher, config.EVENTS_COMPLETED, problems) or []
         cutoff = (date.today() - timedelta(days=args.window)).isoformat()
         known = store.known_complete_events(con)
         for e in index:
