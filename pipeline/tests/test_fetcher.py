@@ -6,9 +6,12 @@ rate-limit with HTTP 429 — it answers 200 OK with a ~385-byte page titled
 without this heuristic it reads as a parser failure and the run degrades
 silently the longer it goes on.
 """
+import shutil
 import sys
+import tempfile
 import time
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -222,3 +225,90 @@ class TestRenderNeverRaises(FetcherTestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestAHostThatOnlyAnswersABrowser(unittest.TestCase):
+    """The state that made a run look hung.
+
+    ufcstats answers every plain request from some networks with the same
+    2,994-byte holding page, while answering a real browser perfectly. The
+    fetcher handled that correctly but paid the full retry ladder — 6 + 12 + 24
+    + 48 seconds — before asking the browser, on every single page. Ninety
+    wasted seconds each. A step that reads a hundred fighter pages took three
+    hours and printed nothing but backoff warnings.
+
+    After two pages have gone the long way round and been rescued by the
+    browser, the plain request is not worth making again this run.
+    """
+
+    HOLDING = HOLDING_PAGE
+    REAL = REAL_PAGE
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.f = Fetcher(cache_dir=Path(self.tmp) / "cache")
+        self.plain_calls = []
+        self.render_calls = []
+
+        def fake_request(url, headers, params=None):
+            self.plain_calls.append(url)
+            return FakeResponse(self.HOLDING)
+
+        def fake_render(url):
+            self.render_calls.append(url)
+            return self.REAL
+
+        self.f._request = fake_request
+        self.f._render = fake_render
+        self.f.interval = 0
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _get(self, n):
+        for i in range(n):
+            self.f.get(f"http://ufcstats.com/fighter-details/{i:032x}")
+
+    @mock.patch("time.sleep", lambda *_: None)
+    def test_the_first_two_pages_still_try_plain_requests(self):
+        self._get(2)
+        self.assertEqual(len(self.plain_calls), 2 * config.BLOCK_RETRIES)
+        self.assertEqual(len(self.render_calls), 2)
+
+    @mock.patch("time.sleep", lambda *_: None)
+    def test_after_that_it_goes_straight_to_the_browser(self):
+        self._get(6)
+        # two pages paid the ladder; the other four went direct
+        self.assertEqual(len(self.plain_calls), 2 * config.BLOCK_RETRIES)
+        self.assertEqual(len(self.render_calls), 6)
+
+    @mock.patch("time.sleep", lambda *_: None)
+    def test_the_throttle_is_wound_back_when_it_switches(self):
+        self.f.interval = 0
+        self._get(3)
+        self.assertEqual(self.f.interval, config.MIN_INTERVAL_SEC)
+
+    @mock.patch("time.sleep", lambda *_: None)
+    def test_it_goes_back_to_plain_requests_if_the_browser_stops_working(self):
+        self._get(3)
+        self.plain_calls.clear()
+        self.f._render = lambda url: self.HOLDING     # browser blocked too now
+        with self.assertRaises(BlockedError):
+            self.f.get("http://ufcstats.com/fighter-details/deadbeef")
+        self.assertEqual(len(self.plain_calls), config.BLOCK_RETRIES)
+
+    @mock.patch("time.sleep", lambda *_: None)
+    def test_a_host_that_was_never_rescued_is_not_marked(self):
+        self.f._render = lambda url: None             # no browser available
+        with self.assertRaises(BlockedError):
+            self.f.get("http://ufcstats.com/fighter-details/aaaa")
+        self.assertFalse(self.f._prefer_browser("http://ufcstats.com/x"))
+
+    @mock.patch("time.sleep", lambda *_: None)
+    def test_force_browser_skips_the_ladder_from_the_very_first_page(self):
+        """UFC_FORCE_BROWSER=1 was parsed into config and then read by nothing,
+        so setting it did exactly nothing. It is wired up now."""
+        with mock.patch.object(config, "FORCE_BROWSER", True):
+            self._get(3)
+        self.assertEqual(self.plain_calls, [])
+        self.assertEqual(len(self.render_calls), 3)

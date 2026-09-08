@@ -398,3 +398,66 @@ class TestApplyRoster(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestTotalsTableWithoutAClass(unittest.TestCase):
+    """ufcstats moved `b-fight-details__table` off the <table> element and onto
+    the rows inside it. The old selector still matched the *per-round* tables,
+    so the "first table with one data row" test found nothing and the fallback
+    returned the per-round table's first row — round one's numbers recorded as
+    the totals for the whole fight, silently, with the result intact so nothing
+    looked wrong. This pins the shape-based lookup that replaced it."""
+
+    def setUp(self):
+        self.fight = ufcstats.parse_fight(
+            read("fight_classless_totals.html"),
+            url="http://ufcstats.com/fight-details/zzz9")
+
+    def test_it_finds_the_totals_table_with_no_class_on_it(self):
+        self.assertIn("aaa1", self.fight["stats"])
+        self.assertIn("bbb2", self.fight["stats"])
+
+    def test_it_reads_the_whole_fight_not_the_first_round(self):
+        a = self.fight["stats"]["aaa1"]
+        self.assertEqual(a["sig_str_landed"], 104)      # round one alone is 21
+        self.assertEqual(a["sig_str_attempted"], 187)
+        self.assertEqual(a["kd"], 2)                    # round one alone is 1
+        self.assertEqual(a["td_landed"], 3)
+        self.assertEqual(a["ctrl_sec"], 380)            # 6:20, not 1:15
+
+    def test_the_loser_column_is_read_too(self):
+        b = self.fight["stats"]["bbb2"]
+        self.assertEqual(b["sig_str_landed"], 58)
+        self.assertEqual(b["ctrl_sec"], 45)
+
+    def test_a_page_with_no_totals_table_loses_stats_but_not_the_result(self):
+        """Never guess at a different table: no stats is recoverable, wrong
+        stats are not."""
+        html = read("fight_classless_totals.html")
+        html = html.replace("b-fight-details__table-col", "something-else")
+        got = ufcstats.parse_fight(html, url="http://ufcstats.com/fight-details/zzz9")
+        self.assertEqual(got["stats"], {})
+        self.assertEqual(got["winner_id"], "aaa1")
+        self.assertEqual(got["outcome"], "win")
+
+
+class TestTitleBoutsVersusTournamentFinals(unittest.TestCase):
+    """ufcstats hangs a belt and the words "Title Bout" on Road to UFC
+    tournament finals as well as on championship fights. The scoring pays a
+    title multiplier, so a tournament final on a prelim card was quietly worth
+    25% more than the fight next to it."""
+
+    def test_a_championship_bout_counts(self):
+        self.assertTrue(ufcstats._is_championship("UFC Featherweight Title Bout", True))
+
+    def test_a_belt_icon_alone_counts(self):
+        self.assertTrue(ufcstats._is_championship("Lightweight Bout", True))
+
+    def test_a_road_to_ufc_tournament_final_does_not(self):
+        self.assertFalse(ufcstats._is_championship(
+            "Road to UFC 4 Lightweight Tournament Title Bout", True))
+        self.assertFalse(ufcstats._is_championship(
+            "Road to UFC 4 Featherweight Tournament Title Bout", True))
+
+    def test_an_ordinary_bout_does_not(self):
+        self.assertFalse(ufcstats._is_championship("Welterweight Bout", False))

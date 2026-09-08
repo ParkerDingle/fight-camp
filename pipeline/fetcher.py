@@ -24,6 +24,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
@@ -82,6 +83,10 @@ class Fetcher:
         self.blocks_seen = 0
         self.block_streak = 0        # consecutive pages blocked through all retries
         self.giving_up = False       # tripped once the streak says stop asking
+        # Hosts that have proved they will not answer a plain request from here,
+        # and that the browser can get through to anyway. See _prefer_browser.
+        self._browser_hosts: set[str] = set()
+        self._browser_wins = 0
         self._last_request = 0.0
         self._browser = None
         self._pw = None
@@ -153,6 +158,43 @@ class Fetcher:
             return not any(m in text for m in _REAL_PAGE_MARKERS)
         return False
 
+    def _prefer_browser(self, url: str) -> bool:
+        """Should this host go straight to the browser?
+
+        There is a state this fetcher handled correctly but very slowly: a host
+        that refuses every plain request and serves the same holding page, while
+        answering a real browser perfectly. Each page then cost the full retry
+        ladder — 6 + 12 + 24 + 48 seconds of backoff — before the browser was
+        asked, and the browser then returned the page in a couple of seconds.
+        Ninety wasted seconds a page. A run that had to read a hundred fighter
+        pages took three hours and looked like it had hung.
+
+        Nothing was wrong with the ladder; it was being paid over and over for
+        an answer already known. Once two pages on a host have gone all the way
+        through it and been rescued by the browser, the plain request is not
+        worth making again this run.
+
+        UFC_FORCE_BROWSER=1 says the same thing up front, for a network where
+        this is already known. That setting had been read into config and then
+        never looked at by anything, so it had no effect at all; it does now.
+        """
+        if not self.use_browser_fallback:
+            return False
+        if config.FORCE_BROWSER:
+            return True
+        return urlparse(url).hostname in self._browser_hosts
+
+    def _note_browser_win(self, url: str) -> None:
+        self._browser_wins += 1
+        host = urlparse(url).hostname
+        if self._browser_wins >= 2 and host and host not in self._browser_hosts:
+            self._browser_hosts.add(host)
+            log.info("%s answers a browser but not a plain request — using the "
+                     "browser directly from here on, and dropping the backoff",
+                     host)
+            # The throttle was raised by blocks that will not happen any more.
+            self.interval = config.MIN_INTERVAL_SEC
+
     def _throttle_down(self) -> None:
         self.blocks_seen += 1
         before = self.interval
@@ -206,6 +248,20 @@ class Fetcher:
                 f"not requesting {url}: the last {config.BLOCK_GIVE_UP_STREAK} pages were "
                 "all blocked, so this run has stopped asking. Try again later.")
 
+        # A host already known to refuse plain requests and answer a browser:
+        # skip the ladder entirely rather than paying it again per page.
+        if self._prefer_browser(url):
+            html = self._render(url)
+            if html and not self._looks_blocked(url, html):
+                self.block_streak = 0
+                self._store(url, body_path, meta_path, html, None, immutable, rendered=True)
+                return html
+            # The browser stopped working too. Fall through and try properly,
+            # so a host that comes back to life is picked up again.
+            self._browser_hosts.discard(urlparse(url).hostname)
+            log.info("browser no longer getting through to %s — back to plain requests",
+                     urlparse(url).hostname)
+
         blocked_text = None
         for attempt in range(config.BLOCK_RETRIES):
             resp = self._request(url, headers)
@@ -241,6 +297,7 @@ class Fetcher:
             html = self._render(url)
             if html and not self._looks_blocked(url, html):
                 self.block_streak = 0
+                self._note_browser_win(url)
                 self._store(url, body_path, meta_path, html, None, immutable, rendered=True)
                 return html
 

@@ -197,6 +197,24 @@ def _method(raw: str) -> str:
     return raw.strip() or "UNKNOWN"
 
 
+def _is_championship(title_text: str, has_belt: bool) -> bool:
+    """Is this a championship bout, or just a bout with a belt icon on it?
+
+    ufcstats hangs a belt image and the words "Title Bout" on Road to UFC
+    tournament finals as well as on championship fights. They are not the same
+    thing, and the fantasy scoring pays a title multiplier — so a tournament
+    final on a prelim card was quietly worth 25% more than the fight next to it.
+
+    The event page is no help here: on UFC 325 it reported title_bout false for
+    every bout on the card, the actual championship main event included. So the
+    fight page is the source, with tournaments excluded.
+    """
+    t = (title_text or "").lower()
+    if "tournament" in t:
+        return False
+    return ("title" in t) or has_belt
+
+
 # ----------------------------------------------------------------- fight page
 _BONUS_IMG = re.compile(r"/(belt|perf|fight|ko|sub)\.png", re.I)
 _BONUS_MAP = {"perf": "performance", "fight": "fight_of_night",
@@ -252,7 +270,7 @@ def parse_fight(html: str, *, url: str = "") -> dict:
         "fighters": fighters,
         "winner_id": winner_id,
         "outcome": outcome,
-        "title_bout": ("title" in title_text.lower()) or has_belt,
+        "title_bout": _is_championship(title_text, has_belt),
         "weight_class": _weight_class(title_text),
         "method": _method(details.get("method", "")),
         "method_detail": details.get("method", ""),
@@ -305,21 +323,32 @@ def _find_totals_table(soup):
 
     A fight-details page carries several stats tables: bout totals, the same
     numbers per round, then the significant-strike breakdown and its per-round
-    version. Rather than depend on the surrounding labels (which sit in sibling
-    sections and have moved before), key on the shape: the totals table is the
-    first one with exactly one data row — the per-round tables have one row per
-    round.
+    version. Key on the shape rather than the labels, which sit in sibling
+    sections and have moved before: the totals table is the first one with
+    exactly one data row — the per-round tables have one row per round.
+
+    Every <table> is considered, deliberately. ufcstats used to put
+    `b-fight-details__table` on the table element and now puts it only on the
+    rows and cells inside, leaving the totals tables with no class at all. That
+    change was not survivable by the old version of this function, and it failed
+    in the worst available way: the class still matched the *per-round* tables,
+    so the "first table with one data row" test found nothing, and the fallback
+    below returned the first row of the per-round table instead. Round one's
+    numbers, recorded as the totals for the whole fight, with no error anywhere.
+    Undercounting a five-round war as though it lasted five minutes.
+
+    Hence: match on structure only, and never guess. A bout with no recognisable
+    totals table returns nothing, which costs the statistics on that bout and
+    leaves the result intact.
     """
-    for table in soup.select("table.b-fight-details__table"):
+    for table in soup.select("table"):
         body = table.select_one("tbody") or table
         rows = [r for r in body.select("tr") if r.select("td")]
-        if len(rows) == 1:
+        if len(rows) != 1:
+            continue
+        if len(rows[0].select("td.b-fight-details__table-col")) >= len(_TOTALS):
             return rows[0]
-    table = soup.select_one("table.b-fight-details__table")
-    if table is None:
-        return None
-    rows = [r for r in table.select("tr") if r.select("td")]
-    return rows[0] if rows else None
+    return None
 
 
 # --------------------------------------------------------------- fighter page
