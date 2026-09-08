@@ -310,6 +310,19 @@ def export(con, path: Path | None = None, *, since: str | None = None) -> dict:
             "act": 1 if active else 0,
         }
 
+    # Expected points over the next twelve months. Shipped with the pool so the
+    # draft board can be ranked by what a fighter is likely to be worth rather
+    # than by reputation, which is the whole argument of the league.
+    try:
+        import projections
+        for fid, p in projections.build(con).items():
+            f = fighters.get(fid)
+            if f:
+                f.update({"pj": p["proj"], "plo": p["lo"], "phi": p["hi"],
+                          "pf": p["pf"], "ppf": p["ppf"], "pn": p["n"]})
+    except Exception as exc:                     # never let this block an export
+        log.warning("projections unavailable: %s", exc)
+
     flags: dict[str, list[str]] = {}
     for r in con.execute("SELECT * FROM flags WHERE type='missed_weight'"):
         flags.setdefault(r["bout_id"], []).append(r["fighter_id"])

@@ -355,6 +355,20 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;
 .mine-strip .big small{display:block;font-size:9.5px;letter-spacing:.1em;
   color:var(--faint);font-weight:400;text-transform:uppercase}
 
+/* ---------- projections ---------- */
+.proj{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+.proj b{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;
+  font-weight:600;font-size:16px;color:var(--belt)}
+.proj small{font-family:"JetBrains Mono",monospace;font-size:8.5px;letter-spacing:.12em;
+  color:var(--faint)}
+.projbig{display:flex;align-items:baseline;gap:12px;padding:4px 14px 12px}
+.projbig b{font-family:"Big Shoulders Display",sans-serif;font-weight:900;font-size:46px;
+  line-height:.85;color:var(--belt)}
+.projbig span{font-family:"JetBrains Mono",monospace;font-size:11px;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.projbig small{display:block;font-size:10.5px;letter-spacing:.04em;color:var(--faint);
+  text-transform:none;margin-top:3px}
+
 /* ---------- form pips ---------- */
 .form{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
 .form i{width:6px;height:6px;border-radius:2px;background:var(--line);display:block}
@@ -486,7 +500,12 @@ var FIGHTERS=[], BY_ID={};
 if(REAL){
   REAL.fighters.forEach(function(f){
     var o={id:f.id,name:f.name,div:f.div,rank:(f.rank==null?99:f.rank),
-           w:f.w||0,l:f.l||0,d:f.d||0,act:(f.act===0?0:1)};
+           w:f.w||0,l:f.l||0,d:f.d||0,act:(f.act===0?0:1),
+           /* expected points over the next twelve months, from the pipeline's
+              projection model. Absent on an older build, which every screen
+              has to survive. */
+           pj:(f.pj==null?null:f.pj), plo:f.plo, phi:f.phi,
+           pf:f.pf, ppf:f.ppf, pn:(f.pn==null?0:f.pn)};
     FIGHTERS.push(o); BY_ID[o.id]=o;
   });
 } else {
@@ -1628,7 +1647,13 @@ function playersView(){
     var fa=freeAgents().filter(function(f){
       return (faFilter.div==="all"||f.div===faFilter.div)
         && f.name.toLowerCase().indexOf(faFilter.q.toLowerCase())>=0;
-    }).sort(function(a,b){return fighterPoints(b.id,DRAFT_TS)-fighterPoints(a.id,DRAFT_TS);});
+    /* Points scored this season lead; before anyone has scored any — which is
+       the whole of draft week — that is a table of zeroes, so the projection
+       breaks the tie and the list is useful from day one. */
+    }).sort(function(a,b){
+      var d=fighterPoints(b.id,DRAFT_TS)-fighterPoints(a.id,DRAFT_TS);
+      return d || (b.pj||0)-(a.pj||0);
+    });
     var open=signingOpen();
     out+='<div class="card"><div class="card-h"><h2>Free agents</h2>'
       +'<span class="hint">'+fa.length+' available</span></div>'
@@ -1643,7 +1668,9 @@ function playersView(){
         var nxt=(BOUT_BY_FIGHTER[f.id]||[]).filter(function(x){return x.e.ts>=NOW;})[0];
         var lock=lockedUntilAfterCard(f.id);
         return '<div class="fr"><span class="rk'+rankCls(f)+'">'+rankLabel(f)+'</span>'
-          +'<span class="fi"><b>'+esc(f.name)+'</b><span>'+shortDiv(f.div)+' · '
+          +'<span class="fi"><b>'+esc(f.name)
+          +(f.pj==null?'':' <span class="chip">proj '+projLabel(f)+'</span>')
+          +'</b><span>'+shortDiv(f.div)+' · '
           +fighterPoints(f.id,DRAFT_TS).toFixed(1)+' pts since draft'
           +(nxt?" · next "+fdate(nxt.e.ts):" · no bout announced")+'</span></span>'
           +(lock?'<span class="chip">locked</span>'
@@ -1940,10 +1967,16 @@ function sheet(html){
 function closeSheet(){var s=document.querySelector(".scrim"); if(s)s.remove();}
 var pickFilter={q:"",div:"all"};
 function pickSheet(){
+  /* Best available first, by what they are projected to be worth over the
+     season rather than by rank — a champion who defends once a year is not the
+     best pick and the board should not imply otherwise. */
   var fa=freeAgents().filter(function(f){
     return (pickFilter.div==="all"||f.div===pickFilter.div)
       && f.name.toLowerCase().indexOf(pickFilter.q.toLowerCase())>=0;
-  }).sort(function(a,b){return a.rank-b.rank;}).slice(0,60);
+  }).sort(function(a,b){
+    if(a.pj!=null||b.pj!=null) return (b.pj||0)-(a.pj||0);
+    return a.rank-b.rank;
+  }).slice(0,60);
   sheet('<h2 style="font-size:24px">Make your pick</h2>'
     +'<div style="display:grid;grid-template-columns:1fr 116px;gap:8px">'
     +'<input id="pk-q" placeholder="Search" value="'+esc(pickFilter.q)+'">'
@@ -1953,9 +1986,16 @@ function pickSheet(){
     +'<div class="card"><div class="flist">'+fa.map(function(f){
       return '<button class="fr" data-act="do-pick" data-f="'+f.id+'">'
         +'<span class="rk'+rankCls(f)+'">'+rankLabel(f)+'</span>'
-        +'<span class="fi"><b>'+esc(f.name)+'</b><span>'+[longDiv(f.div),record(f)].filter(Boolean).join(' · ')+'</span></span>'
-        +'<span class="chip red">Draft</span></button>';
-    }).join("")+'</div></div>');
+        +'<span class="fi"><b>'+esc(f.name)+'</b><span>'
+        +[longDiv(f.div),record(f),projWhy(f)].filter(Boolean).join(' · ')+'</span></span>'
+        +(f.pj==null?'<span class="chip red">Draft</span>'
+          :'<span class="proj"><b>'+projLabel(f)+'</b><small>PROJ</small></span>')
+        +'</button>';
+    }).join("")
+    +'</div></div>'
+    +'<p class="note">Ordered by projected season points, not by rank. The '
+    +'projection is expected fights multiplied by expected points per fight, '
+    +'both from the last twelve months of real results.</p>');
 }
 /* A whole card in one place: every bout, who owns each corner, and — once it is
    over — what it paid the rosters that had someone on it. */
@@ -1990,6 +2030,7 @@ function fighterSheet(fid){
       +(own?esc(mgr(own).name):(released(f)?"Not on the roster":"Free agent"))+'</span>'
     +(released(f)?'<span class="chip">released</span>':'')
     +'<span class="chip gold">'+fighterPoints(fid,since).toFixed(1)+' pts</span></div>'
+    +projCard(f)
     +'<div class="card"><div class="card-h"><h2>Since joining your roster</h2></div>'
     +'<div class="flist" style="padding-top:4px">'
     +(hist.length?hist.map(function(x){
@@ -2108,9 +2149,47 @@ function activityOf(fid){
   (BOUT_BY_FIGHTER[fid]||[]).forEach(function(x){ if(x.e.ts>=cut) n++; });
   return n;
 }
+/* The projection is the better answer to "who is worth most" and it is already
+   computed from a year of real results, so the auto-pick uses it when the build
+   carries one. The rank-and-activity heuristic stays as the fallback for an
+   older dataset — and it has to, because auto-pick must produce the same choice
+   on every phone whatever build it is running. */
 function autoPickValue(f){
+  if(f.pj!=null) return f.pj;
   var rank=(f.rank==null||f.rank>=99)?26:f.rank;
   return (100-rank*2.6)+activityOf(f.id)*9;
+}
+function projLabel(f){
+  return f.pj==null ? "" : f.pj.toFixed(0);
+}
+/* The one-line reason behind the number. A projection nobody can interrogate
+   is just an opinion with a decimal point on it. */
+function projWhy(f){
+  if(f.pj==null) return "";
+  return f.pf.toFixed(1)+" fights × "+f.ppf.toFixed(0)+" pts";
+}
+/* The long version, on the fighter sheet: the two halves, the range, and how
+   much evidence any of it rests on. A fighter with one bout on record is mostly
+   being described by their division's average, and the card says so rather than
+   letting a confident-looking number imply otherwise. */
+function projCard(f){
+  if(!f || f.pj==null) return "";
+  var conf = f.pn>=4?"four or more bouts on record" :
+             f.pn===0?"no bouts in the last year — this is the divisional average" :
+             f.pn+" bout"+(f.pn===1?"":"s")+" on record, so lean on it lightly";
+  return '<div class="card"><div class="card-h"><h2>Projected season</h2>'
+    +'<span class="hint">next 12 months</span></div>'
+    +'<div class="projbig"><b>'+f.pj.toFixed(0)+'</b>'
+    +'<span>points<small>'+f.plo.toFixed(0)+'–'+f.phi.toFixed(0)+' likely range</small></span></div>'
+    +'<div class="set"><label>Expected fights<small>How often they actually '
+    +'compete, which is most of the game</small></label>'
+    +'<span class="locked">'+f.pf.toFixed(1)+'</span></div>'
+    +'<div class="set"><label>Points per fight<small>From their real results, '
+    +'scaled by who they face</small></label>'
+    +'<span class="locked">'+f.ppf.toFixed(1)+'</span></div>'
+    +'<p class="note">'+esc(conf)+'. Statistics are estimated from how long a '
+    +'fight lasts rather than read off the record, so treat the number as a '
+    +'lean, not a promise.</p></div>';
 }
 function bestAvailable(){
   var fa=freeAgents(); if(!fa.length) return null;
