@@ -29,6 +29,28 @@ STATE_TAG = re.compile(
 
 MAX_BYTES = 4_000_000      # the page must stay comfortably under the 16MB cap
 
+_VERSION_RE = re.compile(r"var\s+SCORING_VERSION\s*=\s*(\d+)")
+_DEFAULTS_RE = re.compile(r"var\s+DEFAULT_SCORING\s*=\s*\{(.*?)\};", re.S)
+
+
+def scoring_from_app(html: str) -> tuple[int, dict]:
+    """Read the scoring table straight out of the app's JavaScript.
+
+    The app is the source of truth for what a knockout is worth. Copying those
+    numbers into this file as well would mean two places to change and one of
+    them silently wrong — which is exactly the kind of drift that ends with the
+    standings on a phone disagreeing with the standings on a laptop.
+    """
+    v = _VERSION_RE.search(html)
+    d = _DEFAULTS_RE.search(html)
+    if not v or not d:
+        raise SystemExit("app template has no SCORING_VERSION / DEFAULT_SCORING "
+                         "— the page cannot be built without knowing the scale")
+    body = re.sub(r"/\*.*?\*/", "", d.group(1), flags=re.S)
+    body = re.sub(r"([A-Za-z_][A-Za-z0-9_]*)\s*:", r'"\1":', body)
+    body = body.strip().rstrip(",")
+    return int(v.group(1)), json.loads("{" + body + "}")
+
 
 def load_payload(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -87,12 +109,34 @@ def trim_to_season(payload: dict, draft_date: str, months: int,
     return payload
 
 
-def build_state(existing: dict, args, payload: dict) -> dict:
+def build_state(existing: dict, args, payload: dict, scoring_version: int = 1,
+                scoring: dict | None = None) -> dict:
     state = dict(existing)
     draft_ts = int(datetime.fromisoformat(args.draft_date)
                    .replace(tzinfo=timezone.utc).timestamp() * 1000)
-    state["rev"] = existing.get("rev", 1) + 1
+    # The rev deliberately does NOT climb with each build.
+    #
+    # This page is rebuilt and redeployed every night for a year, and the state
+    # baked into it is always an empty league. If the build bumped the rev each
+    # time, that empty league would gain a revision a day and would sooner or
+    # later outrank the real season sitting in Firebase — at which point every
+    # roster disappears and the next tap writes the emptiness back over the top
+    # of the league. It would have happened silently, months in, with no way to
+    # tell what had gone wrong.
+    #
+    # `template` says what this state actually is. The app treats a template as
+    # losing to any real league regardless of rev, and stops being one the
+    # moment anybody does anything. Between the two, a nightly deploy can never
+    # touch a season in progress.
+    state["rev"] = 1
+    state["template"] = True
     state["seed"] = bool(args.auto_draft)
+    state["scoringVersion"] = scoring_version
+    if scoring:
+        # Carried explicitly rather than left to the app's own backfill, because
+        # scoring.py reads these values back out of the built page to describe a
+        # result in a notification.
+        state["scoring"] = dict(scoring)
     state["picks"] = []
     state["rosters"] = {}
     state["banked"] = {}
@@ -185,7 +229,11 @@ def main(argv=None) -> int:
     if not state_match:
         print("app has no <script id=\"league-state\"> block", file=sys.stderr)
         return 1
-    state = build_state(json.loads(state_match.group(2)), args, payload)
+    scoring_version, scoring = scoring_from_app(html)
+    print(f"  scoring v{scoring_version} · appearance {scoring['appear']}, "
+          f"KO {scoring['winKo']}, decision {scoring['winDec']}")
+    state = build_state(json.loads(state_match.group(2)), args, payload,
+                        scoring_version, scoring)
     state_json = json.dumps(state, separators=(",", ":")).replace("</", "<\\/")
     html = STATE_TAG.sub(lambda m: m.group(1) + "\n" + state_json + "\n" + m.group(3),
                          html, count=1)

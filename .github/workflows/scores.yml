@@ -55,13 +55,20 @@ jobs:
 
       - run: pip install -r pipeline/requirements.txt
 
-      # ufcstats serves a shared runner a JavaScript holding page rather than
-      # the site. A real browser is the fetcher's designed way out of that, so
-      # give it one — the plain-HTTP path is not available to us here.
-      - name: Install a browser for the scraper
-        run: |
-          pip install playwright
-          playwright install --with-deps chromium
+      # There was a headless browser here, installed on every run so the scraper
+      # could try to talk its way past the holding page ufcstats serves a shared
+      # runner. It did not work, and it was worse than not working: driving a
+      # browser through the backoff made the scrape step run for longer than the
+      # whole job was allowed, so the job was killed before it ever reached the
+      # rebuild. The site therefore stopped publishing entirely — not because
+      # the scrape failed, which was survivable and expected, but because the
+      # failing scrape was allowed to consume every minute the job had.
+      #
+      # Two changes fix that, and the second is the one that matters:
+      #   - no browser, so the scrape fails in seconds instead of grinding, and
+      #     every run is two minutes shorter into the bargain;
+      #   - a hard timeout on the scrape step, so it can never again take the
+      #     rebuild and the publish down with it.
 
       # Pages already fetched are not fetched again. This is politeness to
       # ufcstats as much as speed: a nightly run that re-reads the whole index
@@ -81,9 +88,14 @@ jobs:
       - name: Scrape
         id: scrape
         continue-on-error: true
+        # The budget, not an expectation. A scrape that gets through takes two
+        # or three minutes; one that is being refused spends its time in backoff
+        # and is worth nothing however long it is given. Everything below this
+        # step is what actually publishes the league, and it now always runs.
+        timeout-minutes: 12
         working-directory: pipeline
         env:
-          UFC_FORCE_BROWSER: "1"
+          UFC_FORCE_BROWSER: "0"
           UFC_SCRAPER_CONTACT: ${{ secrets.UFC_SCRAPER_CONTACT || format('{0}@users.noreply.github.com', github.repository_owner) }}
           # A shared runner is a datacenter address, which sites treat with more
           # suspicion than a home connection. Ask for pages more slowly than the
@@ -162,3 +174,29 @@ jobs:
             python pipeline.py status || echo "status unavailable"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The last thing, and deliberately the only step allowed to fail the run.
+      #
+      # A refused scrape is not a failure — it happens most days and the league
+      # publishes anyway. Results that have stopped arriving altogether *are* a
+      # failure, and the first time that happened nothing said so: every screen
+      # kept working and the standings quietly stopped moving for a fortnight.
+      #
+      # A failed workflow is an email from GitHub to the repo owner with no
+      # configuration at all, which makes this the one alert certain to arrive.
+      - name: Is the league still being fed?
+        if: ${{ inputs.job != 'verify' }}
+        working-directory: pipeline
+        env:
+          UFC_NTFY_TOPIC: ${{ secrets.UFC_NTFY_TOPIC }}
+          UFC_DISCORD_WEBHOOK: ${{ secrets.UFC_DISCORD_WEBHOOK }}
+          UFC_TELEGRAM_TOKEN: ${{ secrets.UFC_TELEGRAM_TOKEN }}
+          UFC_TELEGRAM_CHAT: ${{ secrets.UFC_TELEGRAM_CHAT }}
+          UFC_LEAGUE_URL: "https://parkerdingle.github.io/fight-camp/"
+        run: |
+          if python pipeline.py health >> "$GITHUB_STEP_SUMMARY" 2>&1; then
+            echo "league is being fed"
+          else
+            echo "::error title=Results have stopped arriving::Run schedule/catch-up.ps1 on the PC — a home connection is not refused the way a datacenter is."
+            exit 1
+          fi

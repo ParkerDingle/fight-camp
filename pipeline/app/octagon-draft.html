@@ -309,6 +309,69 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;
 .pick-item[aria-pressed="true"]{border-color:var(--corner);background:var(--corner-wash)}
 .note{font-size:12.5px;color:var(--muted);line-height:1.5;padding:0 14px 13px}
 .note b{color:var(--text);font-weight:600}
+
+/* ---------- banners ---------- */
+.banner{border-radius:9px;padding:10px 12px;font-size:12.5px;line-height:1.5;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.banner b{color:var(--text);font-weight:600}
+.banner.warn{border-color:var(--belt);background:var(--belt-wash);color:var(--belt)}
+.banner.warn b{color:var(--belt)}
+.banner.bad{border-color:var(--blood);background:var(--blood-wash);color:var(--blood)}
+.banner.bad b{color:var(--blood)}
+
+/* ---------- standings bar ---------- */
+.stand-row{position:relative}
+.bar{position:absolute;left:0;top:0;bottom:0;background:var(--blood);opacity:.055;
+  pointer-events:none;border-radius:0 6px 6px 0}
+.stand-row.lead .bar{background:var(--belt);opacity:.11}
+.delta{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--faint);
+  letter-spacing:.04em}
+
+/* ---------- schedule ---------- */
+.ev{display:grid;grid-template-columns:44px 1fr auto;gap:11px;align-items:center;
+  padding:11px 14px;border-top:1px solid var(--line-soft);text-align:left;width:100%}
+.ev:first-child{border-top:none}
+.ev .d{font-family:"JetBrains Mono",monospace;font-size:10px;text-align:center;
+  background:var(--surface-2);border-radius:6px;padding:4px 0;line-height:1.25;color:var(--muted)}
+.ev .d b{display:block;font-size:15px;color:var(--text);font-weight:600}
+.ev .t{min-width:0}
+.ev .t b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.ev .t span{font-size:11.5px;color:var(--muted)}
+.ev.has{background:var(--belt-wash)}
+
+/* ---------- your position, at the top of the league tab ---------- */
+.mine-strip{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
+  padding:13px 14px;border-radius:var(--r);background:var(--surface);
+  border:1px solid var(--line);box-shadow:var(--shadow)}
+.mine-strip .rankbig{font-family:"Big Shoulders Display",sans-serif;font-weight:900;
+  font-size:34px;line-height:.85;color:var(--blood)}
+.mine-strip .rankbig small{display:block;font-family:"JetBrains Mono",monospace;
+  font-size:9px;letter-spacing:.12em;color:var(--faint);font-weight:400}
+.mine-strip .mid b{display:block;font-size:15px;font-weight:600}
+.mine-strip .mid span{font-size:11.5px;color:var(--muted)}
+.mine-strip .big{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;
+  font-weight:600;font-size:23px;text-align:right;line-height:1.1}
+.mine-strip .big small{display:block;font-size:9.5px;letter-spacing:.1em;
+  color:var(--faint);font-weight:400;text-transform:uppercase}
+
+/* ---------- form pips ---------- */
+.form{display:inline-flex;gap:3px;vertical-align:middle;margin-left:6px}
+.form i{width:6px;height:6px;border-radius:2px;background:var(--line);display:block}
+.form i.w{background:var(--good)}
+.form i.l{background:var(--bad);opacity:.65}
+.form i.d{background:var(--belt)}
+
+/* ---------- recap ---------- */
+.recap{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:8px 14px;border-top:1px solid var(--line-soft)}
+.recap:first-child{border-top:none}
+.recap .nm{font-size:13.5px}
+.recap .nm small{display:block;color:var(--muted);font-size:11px}
+.recap .v{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;
+  font-weight:600;font-size:14.5px}
+.recap .v.up{color:var(--good)}
+.recap .v.zero{color:var(--faint)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -316,7 +379,7 @@ nav{position:fixed;bottom:0;left:0;right:0;z-index:30;
 <div id="app"></div>
 
 <script id="league-state" type="application/json">
-{"v":1,"rev":1,"seed":true,"league":{"name":"The Fight Camp","code":"UFC-4K2Q","rosterSize":10,"pickHours":8,"draftTs":1776535200000,"commissioner":"m1","draftMode":"pre","syncId":"b64b9726e8622272"},"managers":[{"id":"m1","name":"Parker","color":"#B8332C","claimed":false},{"id":"m2","name":"Mike","color":"#26548F","claimed":false},{"id":"m3","name":"Dev","color":"#2C7A57","claimed":false},{"id":"m4","name":"Sam","color":"#9C7A26","claimed":false},{"id":"m5","name":"Nia","color":"#6D4C9F","claimed":false},{"id":"m6","name":"Tobi","color":"#B5651D","claimed":false},{"id":"m7","name":"Riley","color":"#0F7C8A","claimed":false},{"id":"m8","name":"Jules","color":"#8A3D6B","claimed":false}],"picks":[],"rosters":{},"banked":{},"log":[],"trades":[],"scoring":{"appear":25,"winDec":50,"winSub":80,"winKo":90,"fin1":30,"fin2":20,"fin3":10,"fin4":5,"lossDec":-10,"lossFin":-20,"draw":0,"perf":25,"titleMult":1.25,"missWeight":-20,"statsOn":true,"sig":0.4,"td":4,"kd":12,"subatt":5,"ctrl":1.5,"oppC":2,"oppT5":1.75,"oppT10":1.5,"oppT15":1.25,"oppUR":1,"foulEye":-15,"foulGroin":-10,"foulOther":-8,"foulPoint":-25},"fouls":{}}
+{"v":1,"rev":1,"seed":true,"league":{"name":"The Fight Camp","code":"UFC-4K2Q","rosterSize":10,"pickHours":8,"draftTs":1776535200000,"commissioner":"m1","draftMode":"pre","syncId":"b64b9726e8622272"},"managers":[{"id":"m1","name":"Parker","color":"#B8332C","claimed":false},{"id":"m2","name":"Mike","color":"#26548F","claimed":false},{"id":"m3","name":"Dev","color":"#2C7A57","claimed":false},{"id":"m4","name":"Sam","color":"#9C7A26","claimed":false},{"id":"m5","name":"Nia","color":"#6D4C9F","claimed":false},{"id":"m6","name":"Tobi","color":"#B5651D","claimed":false},{"id":"m7","name":"Riley","color":"#0F7C8A","claimed":false},{"id":"m8","name":"Jules","color":"#8A3D6B","claimed":false}],"picks":[],"rosters":{},"banked":{},"log":[],"trades":[],"scoring":{"appear":2,"winDec":4,"winSub":7,"winKo":8,"fin1":3,"fin2":2,"fin3":1,"fin4":0.5,"lossDec":-1,"lossFin":-2,"draw":1,"perf":2,"titleMult":1.25,"missWeight":-2,"statsOn":true,"sig":0.03,"td":0.3,"kd":1,"subatt":0.4,"ctrl":0.1,"oppC":2,"oppT5":1.75,"oppT10":1.5,"oppT15":1.25,"oppUR":1,"foulEye":-1.5,"foulGroin":-1,"foulOther":-0.5,"foulPoint":-2.5},"fouls":{},"scoringVersion":2,"template":true}
 </script>
 
 <!-- Filled by build_site.py when self-hosted. Empty = no live sync. -->
@@ -373,6 +436,51 @@ var REAL=(function(){
 var DRAFT_TS=EMBEDDED.league.draftTs;
 var SEASON_END=DRAFT_TS+365*864e5;                 // rolling 12 months
 var NOW=Date.now();
+
+/* ---- is the data still arriving? ----
+   Everything on these screens is only as true as the last successful scrape,
+   and a scraper that quietly stops returns no error to anyone — the page keeps
+   rendering last month's results as if they were this month's, and a league
+   could get most of the way through a season before somebody noticed the
+   standings had not moved. The build stamps the page; the page says so. */
+var BUILT_TS=(function(){
+  var t=REAL && REAL.generated_at ? Date.parse(REAL.generated_at) : NaN;
+  return isNaN(t) ? null : t;
+})();
+function dataAgeDays(){
+  return BUILT_TS==null ? null : Math.floor((NOW-BUILT_TS)/864e5);
+}
+/* A card every week or so means a gap of more than a few days is either a quiet
+   fortnight in the calendar or a broken pipeline. Rather than guess, this looks
+   for the thing that actually matters: a card that has finished but has no
+   result attached to it. */
+function stalePipeline(){
+  var age=dataAgeDays();
+  if(age==null) return null;
+  var unscored=EVENTS.filter(function(e){
+    return e.ts<NOW-12*36e5 && !e.bouts.some(function(b){return b.done;});
+  });
+  if(unscored.length)
+    return {level:"bad", days:age,
+            what:unscored.length+" finished card"+(unscored.length>1?"s have":" has")
+                 +" no results yet"};
+  /* The build stamp is not the same question as whether results are arriving:
+     the page can be rebuilt every night from a database that stopped growing
+     weeks ago, which is exactly how this went unnoticed the first time. The
+     honest test is the gap since the last card that scored — the UFC does not
+     take a fortnight off. */
+  var last=DONE.length?DONE[DONE.length-1].ts:null;
+  if(last!=null){
+    var gap=Math.floor((NOW-last)/864e5);
+    if(gap>=16)
+      return {level:"bad", days:gap,
+              what:"no card has scored in "+gap+" days, which is longer than the "
+                   +"UFC goes between events"};
+  }
+  if(age>=10)
+    return {level:"warn", days:age, what:"nothing new has been scraped in "+age+" days"};
+  return null;
+}
 
 var FIGHTERS=[], BY_ID={};
 if(REAL){
@@ -463,7 +571,12 @@ function loadState(){
   var embedded=JSON.parse(document.getElementById("league-state").textContent);
   try{
     var raw=localStorage.getItem(LOCAL_KEY);
-    if(raw){var l=JSON.parse(raw); if(l && l.rev>=embedded.rev) embedded=l;}
+    var l=raw?JSON.parse(raw):null;
+    /* Same precedence as adoptRemote: a real league beats a rebuilt template
+       whatever the numbers say, so a nightly deploy cannot roll a phone back to
+       an empty season while it is offline. */
+    if(l && (isTemplate(embedded) ? !isTemplate(l) : (!isTemplate(l) && l.rev>=embedded.rev)))
+      embedded=l;
   }catch(e){}
   /* Same shape guarantees as a state arriving from Firebase: fill in settings
      that did not exist when this league was last written. */
@@ -493,7 +606,7 @@ function seedDraft(){
 }
 function saveLocal(){ try{localStorage.setItem(LOCAL_KEY,JSON.stringify(S));}catch(e){} }
 function commit(msg){
-  S.rev=(S.rev||1)+1; S.seed=false; saveLocal(); render();
+  S.rev=(S.rev||1)+1; S.seed=false; S.template=false; saveLocal(); render();
   if(msg) toast(msg);
   syncPush();
 }
@@ -515,12 +628,20 @@ var syncMode="local", fbRef=null;
 
 /* Every scoring key with its default. A league that has been running since
    before a setting existed still has to score correctly, so anything missing is
-   filled in here rather than arriving as NaN halfway down a scorecard. */
-var DEFAULT_SCORING={appear:25,winDec:50,winSub:80,winKo:90,fin1:30,fin2:20,fin3:10,fin4:5,
-  lossDec:-10,lossFin:-20,draw:0,perf:25,titleMult:1.25,missWeight:-20,
-  statsOn:true,sig:0.4,td:4,kd:12,subatt:5,ctrl:1.5,
+   filled in here rather than arriving as NaN halfway down a scorecard.
+
+   The scale was calibrated by running the real twelve months of results through
+   this engine across hundreds of simulated drafts: it puts a median season
+   somewhere near 190 and only a runaway winner past 250, which is the size of
+   number this league wanted. Every value keeps its old proportion — the balance
+   between a knockout and a decision, or a takedown and a knockdown, is exactly
+   what it was — so nothing about the strategy changes, only the digits. */
+var SCORING_VERSION=2;
+var DEFAULT_SCORING={appear:2,winDec:4,winSub:7,winKo:8,fin1:3,fin2:2,fin3:1,fin4:0.5,
+  lossDec:-1,lossFin:-2,draw:1,perf:2,titleMult:1.25,missWeight:-2,
+  statsOn:true,sig:0.03,td:0.3,kd:1,subatt:0.4,ctrl:0.1,
   oppC:2,oppT5:1.75,oppT10:1.5,oppT15:1.25,oppUR:1,
-  foulEye:-15,foulGroin:-10,foulOther:-8,foulPoint:-25};
+  foulEye:-1.5,foulGroin:-1,foulOther:-0.5,foulPoint:-2.5};
 
 /* A fighter can be drafted before they have ever fought, while the only id we
    have for them is a temporary one built from their name. The week they debut,
@@ -565,9 +686,25 @@ function normalizeState(v){
   v.scoring = v.scoring || {};
   v.fouls   = v.fouls   || {};
   v.league  = v.league  || {};
+  /* A rescale of the whole table is not a missing-key backfill: every value
+     moves at once, and a league already holding the old numbers has to be moved
+     with it or two phones disagree about the standings. So the table carries a
+     version, and a state written before this one gets the new table wholesale.
+     This deliberately discards a commissioner's hand-tuned values — that is the
+     point of a rescale, and it happens once. */
+  if(v.scoringVersion!==SCORING_VERSION){
+    var keepStats = v.scoring.statsOn;
+    v.scoring = JSON.parse(JSON.stringify(DEFAULT_SCORING));
+    if(keepStats===false) v.scoring.statsOn=false;
+    v.scoringVersion = SCORING_VERSION;
+  }
   for(var k in DEFAULT_SCORING){
     if(v.scoring[k]===undefined || v.scoring[k]===null) v.scoring[k]=DEFAULT_SCORING[k];
   }
+  /* The season window lives on the state, not on the page that was built last
+     week: the commissioner stamps the real draft time when they open the draft,
+     and every "since the draft" figure has to follow it. */
+  if(v.league.draftTs){ DRAFT_TS=v.league.draftTs; SEASON_END=DRAFT_TS+365*864e5; }
   /* A draft only counts as running once someone deliberately started it. State
      written before the start button existed says "live" with no start stamp —
      that is a draft waiting to begin, not one in progress. */
@@ -587,11 +724,30 @@ function commishOnly(){
   render();
   return false;
 }
+/* ---- which state wins ----
+   A freshly built page carries a state that was never a league: empty rosters,
+   no picks, whatever rev the build stamped on it. The live league lives in
+   Firebase. Deciding between them on rev alone is a trap that only springs
+   months in — the pipeline rebuilds and republishes this page every night, so
+   if each build bumped the number, the empty template would eventually outrank
+   a real season and every roster would appear to vanish. Worse, the next tap
+   would push that emptiness back over the top of the real league.
+
+   So a template never competes on rev. It loses to any real state, always, and
+   the moment anybody does anything the page stops being a template. */
+function isTemplate(v){ return !!(v && (v.template || v.seed)); }
 function adoptRemote(v){
   v = normalizeState(v);
-  if(!v || !(v.rev > (S.rev||0))) return;
+  if(!v) return;
+  var better = isTemplate(S) && !isTemplate(v) ? true
+             : (!isTemplate(S) && isTemplate(v)) ? false
+             : v.rev > (S.rev||0);
+  if(!better) return;
   S = v; saveLocal();
   if(ME && !S.managers.some(function(m){return m.id===ME;})) ME=null;
+  /* The state that just arrived may already be past a pick deadline — another
+     phone could have been asleep when it expired. */
+  if(tickDraft()) return;
   render();
 }
 function syncPush(){
@@ -664,23 +820,58 @@ function oppTier(rank){
   if(rank<=10)               return {mult:S.scoring.oppT10, label:"top 10 (#"+rank+")"};
   return {mult:S.scoring.oppT15, label:"ranked #"+rank};
 }
+/* A fight ends in more ways than three. ufcstats reports disqualifications,
+   doctor stoppages, "Could Not Continue", overturned results and the occasional
+   string nobody has seen before, and the old rule — anything that is not a
+   decision or a submission is a knockout — quietly paid knockout money plus a
+   finish bonus for all of them. Only a real finish is treated as one now;
+   anything unrecognised is scored as the modest result it probably was. */
+function methodClass(m){
+  m=String(m||"").toUpperCase();
+  if(m.indexOf("KO")>=0) return "ko";      /* KO/TKO */
+  if(m.indexOf("SUB")>=0) return "sub";
+  if(m.indexOf("DEC")>=0) return "dec";
+  if(m.indexOf("DQ")>=0) return "dq";
+  return "other";
+}
+function methodLabel(b){
+  var m=String(b.method||"").toUpperCase();
+  return (m==="KO/TKO"||m==="SUB"||m==="DEC"||m==="DQ") ? m
+       : (b.method ? String(b.method) : "stoppage");
+}
 function boutPoints(b,fid){
   var sc=S.scoring, out=0, lines=[];
-  function add(label,v){ if(v){out+=v; lines.push([label,v]);} }
+  /* Each line is rounded as it lands and the total is the sum of the rounded
+     lines, so a scorecard always adds up to the number printed at the bottom.
+     Summing full precision and rounding once leaves a card that is a tenth out
+     from its own arithmetic, which is exactly the sort of thing that gets
+     argued about in a group chat. */
+  function add(label,v){ v=round1(v); if(v){out=round1(out+v); lines.push([label,v]);} }
   if(b.done){
+    var oc=b.outcome || (b.win ? "win" : "");
     add("Fought", sc.appear);
-    if(b.win){
-      var won=b.win===fid, mult=b.title?sc.titleMult:1;
+    if(oc==="draw"){
+      add("Draw", sc.draw);
+    } else if(oc==="nc"){
+      /* The result is void, so there is no result to pay for. Stepping in and
+         doing the work still counts — that is what the appearance is. */
+      lines.push(["No contest", 0]);
+    } else if(b.win){
+      var won=b.win===fid, mult=b.title?sc.titleMult:1, mc=methodClass(b.method);
       if(won){
-        var base= b.method==="DEC"?sc.winDec : (b.method==="SUB"?sc.winSub:sc.winKo);
-        add("Win by "+b.method, round1(base*mult));
-        if(b.method!=="DEC"){
+        var base= mc==="ko"?sc.winKo : mc==="sub"?sc.winSub : sc.winDec;
+        add("Win by "+methodLabel(b), round1(base*mult));
+        /* Only a knockout or a submission is a finish. A disqualification or a
+           fight that could not continue is not, whatever round it stopped in. */
+        if(mc==="ko"||mc==="sub"){
           var fb= b.round===1?sc.fin1 : b.round===2?sc.fin2 : b.round===3?sc.fin3 : sc.fin4;
           add("Round "+b.round+" finish", round1(fb*mult));
         }
         if(b.perf) add("Performance bonus", sc.perf);
       } else {
-        add("Loss by "+b.method, b.method==="DEC"?sc.lossDec:sc.lossFin);
+        var mcl=methodClass(b.method);
+        add("Loss by "+methodLabel(b),
+            (mcl==="ko"||mcl==="sub"||mcl==="dq") ? sc.lossFin : sc.lossDec);
       }
     }
     if(sc.statsOn && b.st && b.st[fid]){
@@ -695,7 +886,7 @@ function boutPoints(b,fid){
        night against him costs half, because that is a harder night's work. */
     var opp=BY_ID[b.a===fid?b.b:b.a], tier=oppTier(opp?opp.rank:null);
     if(tier.mult && tier.mult!==1 && out!==0){
-      var scaled = out>0 ? out*tier.mult : out/tier.mult;
+      var scaled = round1(out>0 ? out*tier.mult : out/tier.mult);
       lines.push(["vs "+tier.label+" (×"+tier.mult+")", round1(scaled-out)]);
       out = scaled;
     }
@@ -708,8 +899,14 @@ function boutPoints(b,fid){
   if(fl.groin) add("Low blow"+(fl.groin>1?" ×"+fl.groin:""), round1(fl.groin*sc.foulGroin));
   if(fl.other) add("Other foul"+(fl.other>1?" ×"+fl.other:""), round1(fl.other*sc.foulOther));
   if(fl.pt)    add("Point deducted"+(fl.pt>1?" ×"+fl.pt:""), round1(fl.pt*sc.foulPoint));
-  if(b.miss===fid) add("Missed weight", sc.missWeight);
+  /* Both fighters can miss weight on the same bout, so this arrives as a list;
+     older exports sent a single id and are still read correctly. */
+  if(missedWeight(b,fid)) add("Missed weight", sc.missWeight);
   return {pts:round1(out),lines:lines};
+}
+function missedWeight(b,fid){
+  if(!b.miss) return false;
+  return Array.isArray(b.miss) ? b.miss.indexOf(fid)>=0 : b.miss===fid;
 }
 var FOUL_KINDS=[["eye","Eye poke"],["groin","Low blow"],
                 ["other","Other foul"],["pt","Point deducted"]];
@@ -731,15 +928,28 @@ function setFoul(bid,fid,kind,delta){
   return true;
 }
 function round1(n){return Math.round(n*10)/10;}
+/* A card counts if it has happened and it falls inside the season. Without the
+   upper bound the league would carry on scoring for ever, and the winner would
+   depend on when somebody happened to open the page. */
+function counts(ts,since){ return ts>=(since||0) && ts<NOW && ts<=SEASON_END; }
+/* Recomputed from scratch on every render, several hundred times over on the
+   free-agent list. The results only change when the season moves on or the
+   commissioner edits the table, so they are cached against both. */
+var PT_CACHE={}, PT_STAMP="";
+function ptCacheKey(){ return S.rev+"|"+JSON.stringify(S.scoring)+"|"+Math.floor(NOW/6e4); }
 function fighterPoints(fid,since){
+  var stamp=ptCacheKey();
+  if(stamp!==PT_STAMP){ PT_CACHE={}; PT_STAMP=stamp; }
+  var key=fid+"@"+(since||0);
+  if(PT_CACHE[key]!==undefined) return PT_CACHE[key];
   var list=BOUT_BY_FIGHTER[fid]||[], t=0;
-  list.forEach(function(x){ if(x.e.ts>=(since||0) && x.e.ts<NOW) t+=boutPoints(x.b,fid).pts; });
-  return round1(t);
+  list.forEach(function(x){ if(counts(x.e.ts,since)) t+=boutPoints(x.b,fid).pts; });
+  return (PT_CACHE[key]=round1(t));
 }
 function fighterRecordSeason(fid,since){
   var w=0,l=0;
   (BOUT_BY_FIGHTER[fid]||[]).forEach(function(x){
-    if(x.e.ts<(since||0)||x.e.ts>=NOW||!x.b.win)return;
+    if(!counts(x.e.ts,since)||!x.b.win)return;
     if(x.b.win===fid)w++;else l++;
   });
   return w+"-"+l;
@@ -749,7 +959,7 @@ function managerTotal(mid){
   (S.rosters[mid]||[]).forEach(function(e){
     t+=fighterPoints(e.f,e.since);
     (BOUT_BY_FIGHTER[e.f]||[]).forEach(function(x){
-      if(x.e.ts<e.since||x.e.ts>=NOW||!x.b.win)return;
+      if(!counts(x.e.ts,e.since)||!x.b.win)return;
       if(x.b.win===e.f)w++;else l++;
     });
   });
@@ -775,6 +985,34 @@ function freeAgents(){
   return FIGHTERS.filter(function(f){return !ownerOf(f.id) && f.act!==0;});
 }
 function released(f){ return f && f.act===0; }
+
+/* ---- free agency ----
+   Two holes the season would otherwise fall through.
+
+   The first: nothing stopped a manager opening Players during the draft and
+   simply signing ten fighters, draft board untouched. Signing is shut until
+   every pick is in.
+
+   The second: points count from the moment a fighter joins a roster, and a card
+   is timestamped at its final bell — so a free agent could be signed on the
+   morning of a fight they were already booked for, and pay out that night. A
+   fighter with a bout already under way, or starting within the day, is frozen
+   until that card is over. Nobody has to police it in the group chat. */
+function signingOpen(){ return S.league.draftMode==="complete"; }
+function signingClosedWhy(){
+  return S.league.draftMode==="pre"
+    ? "Free agency opens when the draft is done"
+    : "The draft is still running — signings open after the last pick";
+}
+var LOCK_MS=24*36e5;
+function lockedUntilAfterCard(fid){
+  var hit=null;
+  (BOUT_BY_FIGHTER[fid]||[]).forEach(function(x){
+    if(hit) return;
+    if(x.e.ts>=NOW && x.e.ts-NOW<LOCK_MS) hit=x.e;   /* card imminent */
+  });
+  return hit;
+}
 
 /* ============================ helpers ============================ */
 var LONG_BY_SHORT={};
@@ -889,7 +1127,7 @@ function art(pose,style){
   return '<div class="art" style="'+style+'">'+(POSES[pose]||"")+'</div>';
 }
 
-var TAB="league", SUB={players:"fa"};
+var TAB="league", SUB={players:"fa",league:"table"};
 var ICONS={
   league:'<path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/>',
   draft:'<path d="M3 5h18M3 12h11M3 19h7"/><circle cx="19" cy="16" r="3"/>',
@@ -1003,7 +1241,11 @@ function signInView(){
     +'it is not a Claude account and it is not shared with anyone.</p></div></main>';
 }
 
-/* ---- join ---- */
+/* ---- join ----
+   A seat is the only thing standing between a stranger who found the URL and
+   somebody else's roster, so claiming one costs the league code. Checked on the
+   write, not just hidden in the UI. */
+var joinCode="", joinError="";
 function joinView(){
   return '<main style="padding-top:0;gap:18px">'
     +'<section class="hero" style="padding:46px 0 14px">'
@@ -1013,17 +1255,24 @@ function joinView(){
     +'<p class="muted" style="margin:10px 0 0;max-width:34ch">Season-long rosters of '+S.league.rosterSize
     +' fighters. Points accumulate every card for 12 months from draft day. '
     +'Pick your seat to get in.</p></section>'
-    +'<div class="card"><div class="flist">'
+    +'<div class="card"><div class="card-h"><h2>Take your seat</h2></div>'
+    +'<div style="padding:0 14px 12px">'
+    +'<input id="jn-code" placeholder="League code" autocapitalize="characters" '
+    +'autocomplete="off" value="'+esc(joinCode)+'">'
+    +(joinError?'<div class="chip red" style="white-space:normal;padding:8px 10px;margin-top:10px">'
+      +esc(joinError)+'</div>':'')+'</div>'
+    +'<div class="flist">'
     +S.managers.map(function(m){
-      var t=managerTotal(m.id);
-      return '<button class="fr" data-act="claim" data-m="'+m.id+'">'
+      var t=managerTotal(m.id), taken=!!m.uid;
+      return '<button class="fr" data-act="claim" data-m="'+m.id+'"'+(taken?" disabled":"")+'>'
         +'<span class="avatar" style="background:'+m.color+'">'+initials(m.name)+'</span>'
         +'<span class="fi"><b>'+esc(m.name)+'</b><span>'
-        +(m.claimed?"claimed":"open seat")+' · '+t.w+'-'+t.l+' fighter record</span></span>'
-        +'<span class="fpts">'+t.pts.toFixed(1)+'</span></button>';
+        +(taken?"taken":"open seat")+' · '+t.w+'-'+t.l+' fighter record</span></span>'
+        +'<span class="fpts">'+(taken?'<span class="chip">✓</span>':t.pts.toFixed(1))+'</span></button>';
     }).join("")+'</div>'
-    +'<p class="note" style="padding-top:12px"><b>Prototype:</b> anyone with the link can take a seat. '
-    +'The real version puts a join code behind this screen and locks a seat to one person.</p></div></main>';
+    +'<p class="note" style="padding-top:12px">The code is in the group chat. A seat locks to the '
+    +'account that claims it, on every device that account signs in from — so nobody can pick '
+    +'for you, and you can draft from a borrowed phone.</p></div></main>';
 }
 
 /* ---- fight night ----
@@ -1042,11 +1291,130 @@ function myFighters(){
   return (S.rosters[ME]||[]).map(function(e){return e.f;});
 }
 
-/* ---- league ---- */
+/* ---- league ----
+   Three things a manager opens the app to find out, kept apart so none of them
+   has to be scrolled past: where do I stand, when do my fighters fight, and
+   what has happened since I last looked. */
 function leagueView(){
+  var sub=SUB.league;
+  var out='<div class="seg">'
+    +'<button data-sub="league:table" aria-pressed="'+(sub==="table")+'">Standings</button>'
+    +'<button data-sub="league:sched" aria-pressed="'+(sub==="sched")+'">Schedule</button>'
+    +'<button data-sub="league:act" aria-pressed="'+(sub==="act")+'">Activity</button></div>';
+  var stale=stalePipeline();
+  if(stale){
+    out+='<div class="banner '+stale.level+'"><b>Results are behind.</b> '
+      +esc(stale.what)+'. Nothing is lost — the standings fill in the moment the '
+      +'results are scraped. If this is still showing in a couple of days, the '
+      +'pipeline needs a look rather than more patience.</div>';
+  }
+  if(sub==="sched") return out+scheduleView();
+  if(sub==="act")   return out+activityView();
+  return out+tableView();
+}
+function activityView(){
+  if(!S.log.length) return '<div class="card"><div class="empty">Nothing has happened yet.</div></div>';
+  return '<div class="card"><div class="card-h"><h2>League activity</h2>'
+    +'<span class="hint">most recent first</span></div><div class="flist">'
+    +S.log.slice(0,30).map(function(l){
+      return '<div class="fr"><span class="rk">'+fdate(l.ts)+'</span>'
+        +'<span class="fi"><b>'+esc(l.text)+'</b><span>'+ago(l.ts)+'</span></span></div>';
+    }).join("")+'</div></div>';
+}
+/* ---- schedule ----
+   The question this answers is "have I got anyone on this card", which is
+   otherwise four taps and a memory test. */
+function scheduleView(){
+  var mine=myFighters();
+  function bookedOn(e){
+    return e.bouts.filter(function(b){
+      return mine.indexOf(b.a)>=0||mine.indexOf(b.b)>=0;}).length;
+  }
+  function evRow(e,past){
+    var n=bookedOn(e), d=new Date(e.ts);
+    return '<button class="ev'+(n?" has":"")+'" data-act="event" data-e="'+e.id+'">'
+      +'<span class="d"><b>'+d.getDate()+'</b>'
+      +d.toLocaleDateString(undefined,{month:"short"}).toUpperCase()+'</span>'
+      +'<span class="t"><b>'+esc(e.name)+'</b><span>'
+      +(past?(e.bouts.length+" bouts · "+fdate(e.ts))
+            :(ago(e.ts)+" · "+e.bouts.length+" bouts"))+'</span></span>'
+      +'<span class="'+(n?"chip gold":"chip")+'">'+(n?n+" yours":"—")+'</span></button>';
+  }
+  var up=UPCOMING.slice(0,14), past=DONE.slice().reverse().slice(0,10);
+  return '<div class="card"><div class="card-h"><h2>Coming up</h2>'
+    +'<span class="hint">'+UPCOMING.length+' announced</span></div>'
+    +'<div class="flist">'+(up.length?up.map(function(e){return evRow(e,false);}).join("")
+      :'<div class="empty">No cards announced yet. The schedule fills in as the UFC books them.</div>')
+    +'</div><p class="note">Highlighted cards have your fighters on them. Bouts get added as '
+    +'they are announced, so an empty week now may not stay empty.</p></div>'
+    +'<div class="card"><div class="card-h"><h2>Done</h2>'
+    +'<span class="hint">'+DONE.length+' scored</span></div>'
+    +'<div class="flist">'+(past.length?past.map(function(e){return evRow(e,true);}).join("")
+      :'<div class="empty">No cards yet this season.</div>')+'</div></div>';
+}
+/* Points every manager took off one card — the thing a group chat argues about
+   on a Sunday morning, and the only view that answers "how did I do last
+   night" without adding up ten fighters by hand. */
+function cardRecap(e){
+  var rows=S.managers.map(function(m){
+    var pts=0, who=[];
+    (S.rosters[m.id]||[]).forEach(function(en){
+      e.bouts.forEach(function(b){
+        if(b.a!==en.f && b.b!==en.f) return;
+        if(!counts(e.ts,en.since)) return;
+        var p=boutPoints(b,en.f).pts;
+        pts+=p; who.push((BY_ID[en.f]||{name:"?"}).name+" "+fmt(p));
+      });
+    });
+    return {m:m,pts:round1(pts),who:who};
+  }).filter(function(r){return r.who.length;})
+    .sort(function(a,b){return b.pts-a.pts;});
+  if(!rows.length) return "";
+  return '<div class="card"><div class="card-h"><h2>'+esc(e.name)+'</h2>'
+    +'<span class="hint">'+fdate(e.ts)+'</span></div>'
+    +rows.map(function(r){
+      return '<div class="recap"><span class="nm">'+esc(r.m.name)
+        +(r.m.id===ME?' <span class="chip">you</span>':'')
+        +'<small>'+esc(r.who.join(" · "))+'</small></span>'
+        +'<span class="v '+(r.pts>0?"up":"zero")+'">'+fmt(r.pts)+'</span></div>';
+    }).join("")
+    +'<p class="note" style="padding-top:11px">What each roster took off the last card.</p></div>';
+}
+/* The three things a manager wants before they have read anything: where they
+   are, how far off the lead, and when one of theirs is next in the cage. */
+function mineStrip(){
+  var st=standings(), i=0;
+  st.forEach(function(r,n){ if(r.m.id===ME) i=n; });
+  var me=st[i], back=i?round1(st[0].pts-me.pts):0;
+  var nxt=null;
+  myFighters().forEach(function(f){
+    (BOUT_BY_FIGHTER[f]||[]).forEach(function(x){
+      if(x.e.ts>=NOW && (!nxt || x.e.ts<nxt.e.ts)) nxt={e:x.e,f:f};
+    });
+  });
+  var sub = nxt ? (BY_ID[nxt.f]||{name:"Someone"}).name+" fights "+ago(nxt.e.ts)
+    : (UPCOMING.length ? "Nobody of yours is booked yet" : "No cards announced yet");
+  return '<div class="mine-strip">'
+    +'<div class="rankbig">'+(i+1)+'<small>OF '+st.length+'</small></div>'
+    +'<div class="mid"><b>'+esc(me.m.name)+'</b><span>'+sub+'</span></div>'
+    +'<div class="big">'+me.pts.toFixed(1)
+    +'<small>'+(i?back.toFixed(1)+" back":"leading")+'</small></div></div>';
+}
+/* Last few results as pips — form is the thing you actually want off a roster
+   row, and it reads faster than a record does. */
+function formPips(fid,since){
+  var xs=(BOUT_BY_FIGHTER[fid]||[]).filter(function(x){return counts(x.e.ts,since);})
+    .sort(function(a,b){return a.e.ts-b.e.ts;}).slice(-4);
+  if(!xs.length) return "";
+  return '<span class="form" aria-hidden="true">'+xs.map(function(x){
+    var c = !x.b.win ? "d" : (x.b.win===fid ? "w" : "l");
+    return '<i class="'+c+'"></i>';
+  }).join("")+'</span>';
+}
+function tableView(){
   var st=standings(), tonight=fightNight(), nx=tonight||UPCOMING[0];
   var lastEv=DONE[DONE.length-1];
-  var mine=myFighters(), out="";
+  var mine=myFighters(), out=mineStrip();
   if(tonight){
     var n=tonight.bouts.filter(function(b){
       return mine.indexOf(b.a)>=0||mine.indexOf(b.b)>=0;}).length;
@@ -1073,42 +1441,57 @@ function leagueView(){
          var isMine=mine.indexOf(b.a)>=0||mine.indexOf(b.b)>=0;
          return boutRow(b,false,isMine);}).join("")+'</div></div>';
   }
+  /* The bar makes the gap legible at a glance: a two-point lead and a
+     two-hundred-point lead look nothing alike, which the numbers alone hide. */
+  var top=Math.max(1,st.length?st[0].pts:1);
   out+='<div class="card"><div class="card-h"><h2>Standings</h2>'
     +'<span class="hint">'+DONE.length+' cards scored</span></div><div class="stand">'
     +st.map(function(r,i){
+      var back=i?round1(st[0].pts-r.pts):0;
+      var w=Math.max(0,Math.min(100,(r.pts/top)*100));
       return '<div class="stand-row'+(r.m.id===ME?" me":"")+(i===0?" lead":"")+'">'
+        +'<i class="bar" style="width:'+w.toFixed(1)+'%"></i>'
         +'<div class="pos">'+(i+1)+'</div>'
         +'<div class="who"><b>'+esc(r.m.name)+(r.m.id===ME?' <span class="chip">you</span>':'')+'</b>'
-        +'<span>'+r.w+'-'+r.l+' · '+(S.rosters[r.m.id]||[]).length+' fighters</span></div>'
+        +'<span>'+r.w+'-'+r.l+' · '+(S.rosters[r.m.id]||[]).length+' fighters'
+        +(i?' · <span class="delta">'+back.toFixed(1)+' back</span>'
+           :' · <span class="delta">leader</span>')+'</span></div>'
         +'<div class="pts">'+r.pts.toFixed(1)+'</div></div>';
     }).join("")+'</div>'
     +'<p class="note">Cumulative points from '+new Date(DRAFT_TS).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})
-    +' to '+new Date(SEASON_END).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+'.</p></div>';
+    +' to '+new Date(SEASON_END).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})
+    +'. '+seasonProgress()+'</p></div>';
   if(lastEv){
+    out+=cardRecap(lastEv);
     out+='<div class="card"><div class="card-h"><h2>'+esc(lastEv.name)+'</h2>'
       +'<span class="hint">'+fdate(lastEv.ts)+'</span></div><div class="flist">'
       +lastEv.bouts.map(function(b){return boutRow(b,true);}).join("")+'</div>'
       +'<p class="note">Scoring posts once the card is over — results are scraped after the final bout.</p></div>';
   }
-  if(S.log.length){
-    out+='<div class="card"><div class="card-h"><h2>League activity</h2></div><div class="flist">'
-      +S.log.slice(0,8).map(function(l){
-        return '<div class="fr"><span class="rk">'+fdate(l.ts)+'</span>'
-          +'<span class="fi"><b>'+esc(l.text)+'</b></span></div>';
-      }).join("")+'</div></div>';
-  }
   return out;
+}
+function seasonProgress(){
+  if(NOW<DRAFT_TS) return "The season has not started.";
+  if(NOW>SEASON_END) return "The season is over — this is the final table.";
+  var left=Math.ceil((SEASON_END-NOW)/864e5);
+  var pct=Math.round(((NOW-DRAFT_TS)/(SEASON_END-DRAFT_TS))*100);
+  return pct+"% gone · "+left+" day"+(left===1?"":"s")+" left.";
 }
 function boutRow(b,done,mine){
   function side(fid,cls){
-    var f=BY_ID[fid], own=ownerOf(fid);
+    /* A fighter can vanish from the pool between builds — released, renamed,
+       merged onto a real record. The row still has to draw. */
+    var f=BY_ID[fid]||{name:"TBA"}, own=ownerOf(fid);
     return '<div class="corner '+cls+(done&&b.win===fid?" win":"")+'">'
-      +'<span class="nm">'+esc(f.name)+'</span>'
+      +'<span class="nm">'+esc(f.name)+(missedWeight(b,fid)?' <span class="chip red">MW</span>':'')+'</span>'
       +'<span class="own">'+(own?esc(mgr(own).name):"FA")+'</span></div>';
   }
   var meta=shortDiv(b.div)+(b.title?" · TITLE":"")+" · "+b.rounds+"×5";
-  if(done&&b.win) meta+=" · "+b.method+" R"+b.round+(b.perf?" · PERF BONUS":"");
-  if(b.miss) meta+=" · MISSED WEIGHT";
+  if(done){
+    if(b.outcome==="draw") meta+=" · DRAW";
+    else if(b.outcome==="nc") meta+=" · NO CONTEST";
+    else if(b.win) meta+=" · "+methodLabel(b)+" R"+b.round+(b.perf?" · PERF BONUS":"");
+  }
   return '<div class="bout'+(mine?" mine":"")+'">'+side(b.a,"r")+'<div style="height:4px"></div>'+side(b.b,"b")
     +'<div class="meta">'+meta+'</div></div>';
 }
@@ -1142,8 +1525,9 @@ function draftView(){
       +'<span class="hint">round 1</span></div><div class="stand">'
       +S.managers.map(function(m,i){
          return '<div class="stand-row'+(m.id===ME?" me":"")+'">'
-           +'<div class="rank">'+(i+1)+'</div><div class="who"><b>'+esc(m.name)+'</b>'
-           +'<span>picks '+(i+1)+' and '+(S.managers.length*2-i)+'</span></div></div>';
+           +'<div class="pos">'+(i+1)+'</div><div class="who"><b>'+esc(m.name)+'</b>'
+           +'<span>picks '+(i+1)+' and '+(S.managers.length*2-i)+'</span></div>'
+           +'<div class="pts" style="font-size:13px;color:var(--faint)">R1</div></div>';
        }).join("")+'</div>'
       +'<p class="note">Snake order: it reverses every round, so the last pick in '
       +'round one gets the first pick in round two.'
@@ -1221,9 +1605,10 @@ function teamView(){
     +'<div class="flist">'+ (rows.length?rows.map(function(r){
       return '<button class="fr" data-act="fighter" data-f="'+r.f.id+'">'
         +'<span class="rk'+rankCls(r.f)+'">'+rankLabel(r.f)+'</span>'
-        +'<span class="fi"><b>'+esc(r.f.name)+'</b><span>'+shortDiv(r.f.div)+' · '
-        +fighterRecordSeason(r.f.id,r.e.since)+' this season'
-        +(r.nxt?' · next '+fdate(r.nxt.e.ts):' · not booked')+'</span></span>'
+        +'<span class="fi"><b>'+esc(r.f.name)+formPips(r.f.id,r.e.since)
+        +(released(r.f)?' <span class="chip red">released</span>':'')+'</b><span>'
+        +shortDiv(r.f.div)+' · '+fighterRecordSeason(r.f.id,r.e.since)+' this season'
+        +(r.nxt?' · next '+fdate(r.nxt.e.ts):' · no bout announced')+'</span></span>'
         +'<span class="fpts">'+r.pts.toFixed(1)+'</span></button>';
     }).join(""):'<div class="empty">No fighters yet — head to the draft.</div>')+'</div>'
     +'<div class="btn-row" style="padding:12px 14px 2px">'
@@ -1244,8 +1629,11 @@ function playersView(){
       return (faFilter.div==="all"||f.div===faFilter.div)
         && f.name.toLowerCase().indexOf(faFilter.q.toLowerCase())>=0;
     }).sort(function(a,b){return fighterPoints(b.id,DRAFT_TS)-fighterPoints(a.id,DRAFT_TS);});
+    var open=signingOpen();
     out+='<div class="card"><div class="card-h"><h2>Free agents</h2>'
       +'<span class="hint">'+fa.length+' available</span></div>'
+      +(open?'':'<div class="banner warn" style="margin:0 14px 12px">'
+        +'<b>Signing is closed.</b> '+esc(signingClosedWhy())+'.</div>')
       +'<div style="padding:0 14px 12px;display:grid;grid-template-columns:1fr 116px;gap:8px">'
       +'<input id="fa-q" placeholder="Search fighters" value="'+esc(faFilter.q)+'">'
       +'<select id="fa-div"><option value="all">All divisions</option>'
@@ -1253,18 +1641,27 @@ function playersView(){
         +(faFilter.div===d?" selected":"")+'>'+shortDiv(d)+'</option>';}).join("")+'</select></div>'
       +'<div class="flist">'+(fa.length?fa.slice(0,40).map(function(f){
         var nxt=(BOUT_BY_FIGHTER[f.id]||[]).filter(function(x){return x.e.ts>=NOW;})[0];
+        var lock=lockedUntilAfterCard(f.id);
         return '<div class="fr"><span class="rk'+rankCls(f)+'">'+rankLabel(f)+'</span>'
           +'<span class="fi"><b>'+esc(f.name)+'</b><span>'+shortDiv(f.div)+' · '
           +fighterPoints(f.id,DRAFT_TS).toFixed(1)+' pts since draft'
-          +(nxt?' · next '+fdate(nxt.e.ts):' · not booked')+'</span></span>'
-          +'<button class="btn sm" data-act="add" data-f="'+f.id+'">Add</button></div>';
+          +(nxt?" · next "+fdate(nxt.e.ts):" · no bout announced")+'</span></span>'
+          +(lock?'<span class="chip">locked</span>'
+                :'<button class="btn sm" data-act="add" data-f="'+f.id+'"'
+                 +(open?"":" disabled")+'>Add</button>')+'</div>';
       }).join(""):'<div class="empty">No free agents match.</div>')+'</div>'
-      +'<p class="note">Free agency is open all season. Adding at a full roster forces a drop.</p></div>';
+      +'<p class="note">Free agency opens the moment the draft ends and stays open all season. '
+      +'Adding at a full roster forces a drop. A fighter booked in the next 24 hours is '
+      +'<b>locked</b> until that card is done — you cannot sign someone the morning of '
+      +'their fight and collect the points.</p></div>';
   } else {
     var open=S.trades.filter(function(t){return t.status==="open";});
     out+='<div class="card"><div class="card-h"><h2>Trade block</h2></div>'
+      +(signingOpen()?'':'<div class="banner warn" style="margin:0 14px 12px">'
+        +'<b>Trading is closed.</b> '+esc(signingClosedWhy())+'.</div>')
       +'<div style="padding:0 14px 14px" class="btn-row">'
-      +'<button class="btn primary" data-act="open-trade">Propose a trade</button></div>'
+      +'<button class="btn primary" data-act="open-trade"'+(signingOpen()?"":" disabled")
+      +'>Propose a trade</button></div>'
       +(open.length?'<div class="flist">'+open.map(function(t){
         var mine=t.to===ME;
         return '<div class="fr" style="grid-template-columns:1fr auto">'
@@ -1276,8 +1673,12 @@ function playersView(){
             +'<button class="btn sm ghost" data-act="trade-no" data-t="'+t.id+'">Decline</button></span>'
             :'<span class="chip">pending</span>')+'</div>';
       }).join("")+'</div>':'<div class="empty">No open trades.</div>')
-      +'<p class="note">Trades are fighter-for-fighter and take effect immediately on accept. '
-      +'A real league would add a commissioner veto window here.</p></div>';
+      +'<p class="note">Trades have to be <b>even</b> — the same number of fighters each way, '
+      +'or one roster ends up short with no way to fill it. They take effect the moment they '
+      +'are accepted, and are re-checked against both rosters at that moment: if a fighter in '
+      +'the offer has since been dropped or traded on, the offer voids itself rather than '
+      +'conjuring them out of nowhere. Points a fighter earned while you held them stay with '
+      +'you.</p></div>';
   }
   return out;
 }
@@ -1287,7 +1688,9 @@ function setRow(key,label,sub,off){
   var head='<div class="set'+(off?" off":"")+'"><label for="s-'+key+'">'+label
     +(sub?'<small>'+sub+'</small>':'')+'</label>';
   if(!isCommish()) return head+'<span class="locked">'+S.scoring[key]+'</span></div>';
-  return head+'<input id="s-'+key+'" type="number" step="0.1" data-set="'+key
+  /* step="any": the stat values are hundredths, and a step of 0.1 makes the
+     browser mark 0.03 as invalid and refuse to submit it. */
+  return head+'<input id="s-'+key+'" type="number" step="any" data-set="'+key
     +'" value="'+S.scoring[key]+'"></div>';
 }
 function lgRow(key,label,sub){
@@ -1305,13 +1708,19 @@ function rulesView(){
         +'<p class="note">These are the numbers the season is scored on. '
         +esc(commishName())+' is the commissioner and is the only seat that can '
         +'change them — take it up in the group chat.</p></div>')
+    +'<div class="card"><div class="card-h"><h2>The scale</h2>'
+    +'<span class="hint">what a number means</span></div>'
+    +'<p class="note">A quiet win is worth <b>8 or 9</b>. A knockout of somebody ranked, with '
+    +'a bonus, is worth <b>25 to 35</b>. Finishing the champion in the first round is about '
+    +'<b>35</b>. Over twelve months a roster of ten should land somewhere around '
+    +'<b>150 to 250</b>, and it takes a very good year to go past that.</p></div>'
     +'<div class="card"><div class="card-h"><h2>Every fight</h2>'
     +'<span class="hint">win or lose</span></div>'
     +setRow("appear","Stepping in the cage","Awarded for competing at all")
     +'<p class="note">Activity is the whole game in fantasy MMA. A fighter who '
     +'takes three fights a year beats a better fighter who takes one.</p></div>'
     +'<div class="card"><div class="card-h"><h2>Opponent quality</h2>'
-    +'<span class="hint">multiplies the fight</span></div>'
+    +'<span class="hint">multiplier</span></div>'
     +setRow("oppC","Fighting the champion")
     +setRow("oppT5","Fighting the top 5")
     +setRow("oppT10","Fighting the top 10")
@@ -1335,9 +1744,14 @@ function rulesView(){
     +setRow("titleMult","Title fight multiplier","Applies to outcome points only")
     +setRow("lossDec","Loss by decision")
     +setRow("lossFin","Loss by finish")
+    +setRow("draw","Draw")
     +setRow("missWeight","Missed weight penalty")
-    +'<p class="note">Draws and no-contests score zero. A fighter who withdraws from a booked bout '
-    +'scores nothing rather than a penalty.</p></div>'
+    +'<p class="note">Only a <b>knockout or a submission</b> counts as a finish. A '
+    +'disqualification, a doctor stoppage or a bout that could not continue pays the '
+    +'decision rate and no finish bonus, whatever round it ended in. A <b>draw</b> pays the '
+    +'appearance, the statistics and the draw value; a <b>no contest</b> pays the appearance '
+    +'and the statistics, because the result was wiped but the work still happened. A fighter '
+    +'who withdraws from a booked bout scores nothing rather than a penalty.</p></div>'
     +'<div class="card"><div class="card-h"><h2>Fight statistics</h2>'
     +(isCommish()
        ? '<button class="toggle" data-act="stats-toggle" aria-pressed="'+(sc.statsOn)
@@ -1543,6 +1957,26 @@ function pickSheet(){
         +'<span class="chip red">Draft</span></button>';
     }).join("")+'</div></div>');
 }
+/* A whole card in one place: every bout, who owns each corner, and — once it is
+   over — what it paid the rosters that had someone on it. */
+function eventSheet(eid){
+  var e=null;
+  EVENTS.forEach(function(x){ if(x.id===eid) e=x; });
+  if(!e) return;
+  var mine=myFighters(), done=e.ts<NOW;
+  var n=e.bouts.filter(function(b){return mine.indexOf(b.a)>=0||mine.indexOf(b.b)>=0;}).length;
+  sheet('<div class="eyebrow">'+(done?"Final":ago(e.ts))+' · '
+    +new Date(e.ts).toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})+'</div>'
+    +'<h2 style="font-size:26px">'+esc(e.name)+'</h2>'
+    +'<div class="row"><span class="chip">'+e.bouts.length+' bouts</span>'
+    +'<span class="chip'+(n?" gold":"")+'">'+(n?n+' of yours':'none of yours')+'</span></div>'
+    +(done?cardRecap(e):"")
+    +'<div class="card"><div class="card-h"><h2>'+(done?"Results":"Card")+'</h2></div>'
+    +'<div class="flist">'+e.bouts.map(function(b){
+      return boutRow(b,done,mine.indexOf(b.a)>=0||mine.indexOf(b.b)>=0);
+    }).join("")+'</div></div>'
+    +'<button class="btn" data-act="close-sheet">Close</button>');
+}
 var sheetFighter=null;
 function fighterSheet(fid){
   sheetFighter=fid;
@@ -1581,13 +2015,18 @@ function tradeSheet(){
         +'<span class="chip">'+(on?"selected":"tap")+'</span></button>';
     }).join("");
   }
-  var ok=tradeDraft.give.length&&tradeDraft.get.length;
+  var ok=tradeDraft.give.length && tradeDraft.give.length===tradeDraft.get.length;
+  var hint = !tradeDraft.give.length ? "Pick at least one fighter from each side"
+    : tradeDraft.give.length!==tradeDraft.get.length
+      ? ("Even trades only — "+tradeDraft.give.length+" out, "+tradeDraft.get.length+" back")
+      : (tradeDraft.give.length+" for "+tradeDraft.get.length+" · ready to send");
   sheet('<h2 style="font-size:24px">Propose a trade</h2>'
     +'<select id="t-to">'+others.map(function(m){return '<option value="'+m.id+'"'
       +(tradeDraft.to===m.id?" selected":"")+'>'+esc(m.name)+'</option>';}).join("")+'</select>'
     +'<div class="eyebrow">You send</div><div class="stack">'+list(ME,"give")+'</div>'
     +'<div class="eyebrow">You receive from '+esc(mgr(tradeDraft.to).name)+'</div>'
     +'<div class="stack">'+list(tradeDraft.to,"get")+'</div>'
+    +'<div class="eyebrow" style="text-align:center">'+esc(hint)+'</div>'
     +'<button class="btn primary" data-act="t-send"'+(ok?"":" disabled")+'>Send proposal</button>'
     +'<button class="btn ghost" data-act="close-sheet">Cancel</button>');
 }
@@ -1640,20 +2079,105 @@ function makePick(mid,fid){
   var n=S.picks.length;
   S.picks.push({r:Math.floor(n/S.managers.length)+1,ov:n+1,m:mid,f:fid,ts:Date.now()});
   addFighter(mid,fid,Date.now());
+  if(S.picks.length>=draftOrder().length && S.league.draftMode==="live"){
+    S.league.draftMode="complete";
+    logIt("Draft complete");
+  }
+}
+/* Called wherever the page could have been sitting idle across a deadline: on
+   load, whenever a newer state arrives, and on the timer. */
+var tickBusy=false;
+function tickDraft(){
+  if(tickBusy) return false;
+  tickBusy=true;
+  var changed=false;
+  try{ changed=runAutoPicks(); }catch(e){}
+  tickBusy=false;
+  if(changed) commit();
+  return changed;
+}
+/* Auto-pick has to land on the same fighter on every phone that works out the
+   clock has expired, or two managers watching at once would draft two different
+   people into one slot. So no randomness: rank and how often the fighter
+   actually competes, with the id as a last tiebreak. Activity is weighted
+   because a roster spot is worth what it fights, which is the whole premise of
+   the league — an auto-pick should not hand someone a champion who turns up
+   once a year. */
+function activityOf(fid){
+  var n=0, cut=NOW-540*864e5;
+  (BOUT_BY_FIGHTER[fid]||[]).forEach(function(x){ if(x.e.ts>=cut) n++; });
+  return n;
+}
+function autoPickValue(f){
+  var rank=(f.rank==null||f.rank>=99)?26:f.rank;
+  return (100-rank*2.6)+activityOf(f.id)*9;
 }
 function bestAvailable(){
   var fa=freeAgents(); if(!fa.length) return null;
-  return fa.sort(function(a,b){return a.rank-b.rank || a.id.localeCompare(b.id);})[0];
+  return fa.sort(function(a,b){
+    return autoPickValue(b)-autoPickValue(a) || a.id.localeCompare(b.id);
+  })[0];
+}
+/* ---- the pick clock ----
+   The countdown was only ever text: it ran down and then sat at "expired" for
+   ever, and the draft stopped until somebody noticed and pushed it along by
+   hand. In a seven-person async draft over ten rounds somebody sleeps through
+   their pick — that is what the clock is for. Now any open page that sees an
+   expired clock makes the pick, and because the choice and the timestamps are
+   derived rather than invented, every page that does it independently produces
+   byte-identical state. Firebase's rev guard settles the rest. */
+function pickDeadline(n){
+  var prev = n ? S.picks[n-1].ts : (S.league.startedTs || S.league.draftTs);
+  return prev + S.league.pickHours*36e5;
+}
+function runAutoPicks(){
+  if(S.league.draftMode!=="live") return false;
+  var seq=draftOrder(), made=0;
+  /* Bounded: a draft that has been left alone for a fortnight catches up in one
+     pass, but a clock skew can never spin this. */
+  while(S.picks.length<seq.length && made<seq.length){
+    var n=S.picks.length, due=pickDeadline(n);
+    if(due>Date.now()) break;
+    var who=seq[n], best=bestAvailable();
+    if(!best) break;
+    /* Stamped at the deadline it missed, not at the moment it was noticed, so a
+       backlog cascades to exactly the same times whoever opens the page. */
+    S.picks.push({r:Math.floor(n/S.managers.length)+1, ov:n+1,
+                  m:who, f:best.id, ts:due, auto:true});
+    addFighter(who,best.id,due);
+    logIt(mgr(who).name+" ran out of clock — auto-picked "+best.name);
+    made++;
+  }
+  if(!made) return false;
+  if(S.picks.length>=seq.length && S.league.draftMode==="live"){
+    S.league.draftMode="complete";
+    logIt("Draft complete");
+  }
+  return true;
 }
 document.addEventListener("click",function(ev){
   var el=ev.target.closest("[data-act],[data-tab],[data-sub]"); if(!el) return;
   var act=el.dataset.act;
   if(el.dataset.tab){ TAB=el.dataset.tab; render(); return; }
-  if(el.dataset.sub){ SUB.players=el.dataset.sub; render(); return; }
+  /* "tab:value" targets one tab's segmented control; a bare value is the
+     players tab, which is where these started. */
+  if(el.dataset.sub){
+    var parts=el.dataset.sub.split(":");
+    if(parts.length===2) SUB[parts[0]]=parts[1]; else SUB.players=parts[0];
+    render(); return;
+  }
+  if(act==="event"){ eventSheet(el.dataset.e); return; }
   if(act==="close-sheet"){ if(ev.target===el) closeSheet(); return; }
   if(act==="claim"){
     var m=mgr(el.dataset.m);
     if(authUser){
+      var typed=((document.getElementById("jn-code")||{}).value||joinCode||"").trim();
+      joinCode=typed;
+      if(typed.toUpperCase().replace(/\s+/g,"")!==String(S.league.code||"").toUpperCase()){
+        joinError="That is not the league code. Ask in the group chat.";
+        render(); return;
+      }
+      joinError="";
       if(m.uid && m.uid!==authUser.uid){ toast(m.name+" is already taken"); return; }
       var mine=seatOf(authUser.uid);
       if(mine && mine!==m.id){ toast("You already hold "+mgr(mine).name+"'s seat"); return; }
@@ -1720,6 +2244,11 @@ document.addEventListener("click",function(ev){
   }
   if(act==="add"){
     var fid=el.dataset.f;
+    if(!signingOpen()){ toast(signingClosedWhy()); return; }
+    var lk=lockedUntilAfterCard(fid);
+    if(lk){ toast(BY_ID[fid].name+" fights "+ago(lk.ts)+" — locked until the card is over"); return; }
+    if(ownerOf(fid)){ toast("Already on a roster"); return; }
+    if(released(BY_ID[fid])){ toast("Not on the UFC roster any more"); return; }
     if((S.rosters[ME]||[]).length>=S.league.rosterSize){ dropSheet(fid); return; }
     addFighter(ME,fid); logIt(mgr(ME).name+" signed "+BY_ID[fid].name);
     commit("Signed "+BY_ID[fid].name); return;
@@ -1743,21 +2272,48 @@ document.addEventListener("click",function(ev){
     closeSheet(); tradeSheet(); return;
   }
   if(act==="t-send"){
-    S.trades.push({id:"t"+Date.now(),from:ME,to:tradeDraft.to,
-      give:tradeDraft.give.slice(),get:tradeDraft.get.slice(),status:"open"});
+    if(!signingOpen()){ toast(signingClosedWhy()); return; }
+    var offer={id:"t"+Date.now()+"-"+ME,from:ME,to:tradeDraft.to,
+      give:tradeDraft.give.slice(),get:tradeDraft.get.slice(),status:"open",ts:Date.now()};
+    var why=tradeProblem(offer);
+    if(why){ toast(why); return; }
+    S.trades.push(offer);
     logIt(mgr(ME).name+" offered a trade to "+mgr(tradeDraft.to).name);
     closeSheet(); commit("Proposal sent"); return;
   }
   if(act==="trade-yes"){
     var tr=S.trades.filter(function(t){return t.id===el.dataset.t;})[0]; if(!tr) return;
-    tr.give.forEach(function(f){ removeQuiet(tr.from,f); addFighter(tr.to,f); });
-    tr.get.forEach(function(f){ removeQuiet(tr.to,f); addFighter(tr.from,f); });
-    tr.status="done"; logIt("Trade: "+mgr(tr.from).name+" ↔ "+mgr(tr.to).name);
+    if(tr.to!==ME){ toast("That offer is not yours to accept"); return; }
+    if(tr.status!=="open"){ toast("That offer is no longer open"); return; }
+    /* An offer is a promise about a roster that may have moved on since: the
+       fighter could have been traded elsewhere, dropped, or offered twice over.
+       Re-check it against the roster as it stands, not as it stood. */
+    var bad=tradeProblem(tr);
+    if(bad){ tr.status="void"; logIt("Trade voided: "+bad); commit(bad); return; }
+    /* Banked on the way out, exactly as a drop is. Trading a fighter away used
+       to delete every point they had scored for you, which quietly made a fair
+       trade a punishment. What a fighter earned while you held them is yours. */
+    tr.give.forEach(function(f){ dropFighter(tr.from,f); });
+    tr.get.forEach(function(f){ dropFighter(tr.to,f); });
+    tr.give.forEach(function(f){ addFighter(tr.to,f,Date.now()); });
+    tr.get.forEach(function(f){ addFighter(tr.from,f,Date.now()); });
+    tr.status="done"; tr.doneTs=Date.now();
+    /* Any other open offer that leaned on a fighter who just moved is dead. */
+    S.trades.forEach(function(o){
+      if(o.status==="open" && tradeProblem(o)) o.status="void";
+    });
+    logIt("Trade: "+mgr(tr.from).name+" ↔ "+mgr(tr.to).name);
     commit("Trade complete"); return;
   }
   if(act==="trade-no"){
     var t2=S.trades.filter(function(t){return t.id===el.dataset.t;})[0];
-    if(t2) t2.status="declined"; commit("Trade declined"); return;
+    if(!t2 || t2.status!=="open") return;
+    if(t2.to!==ME && t2.from!==ME){ toast("That offer is not yours"); return; }
+    var withdrawn = t2.from===ME;
+    t2.status = withdrawn ? "withdrawn" : "declined";
+    logIt(mgr(ME).name+(withdrawn?" withdrew an offer to ":" declined an offer from ")
+      +mgr(withdrawn?t2.to:t2.from).name);
+    commit(withdrawn?"Offer withdrawn":"Trade declined"); return;
   }
   if(act==="stats-toggle"){ if(!commishOnly()) return;
     S.scoring.statsOn=!S.scoring.statsOn; commit(
@@ -1766,9 +2322,33 @@ document.addEventListener("click",function(ev){
 function removeQuiet(mid,fid){
   S.rosters[mid]=(S.rosters[mid]||[]).filter(function(e){return e.f!==fid;});
 }
+function holds(mid,fid){
+  return (S.rosters[mid]||[]).some(function(e){return e.f===fid;});
+}
+/* Returns why a trade can no longer happen, or null if it still can. Checked
+   when the offer is made and again the moment it is accepted, because the gap
+   between the two can be days. */
+function tradeProblem(tr){
+  if(!mgr(tr.from) || !mgr(tr.to)) return "A manager in that trade is gone";
+  if(!tr.give.length || !tr.get.length) return "A trade needs fighters on both sides";
+  var bad=null;
+  tr.give.forEach(function(f){
+    if(!holds(tr.from,f)) bad=bad||((BY_ID[f]||{name:"A fighter"}).name+" is no longer on "+mgr(tr.from).name+"'s roster");
+  });
+  tr.get.forEach(function(f){
+    if(!holds(tr.to,f)) bad=bad||((BY_ID[f]||{name:"A fighter"}).name+" is no longer on "+mgr(tr.to).name+"'s roster");
+  });
+  if(bad) return bad;
+  /* Rosters have a fixed size, so an uneven trade would leave one manager short
+     and the other over the limit with no way back. */
+  if(tr.give.length!==tr.get.length)
+    return "Trades have to be even — "+tr.give.length+" for "+tr.get.length+" would break both rosters";
+  return null;
+}
 document.addEventListener("input",function(ev){
   var t=ev.target;
   if(t.id==="au-email"){ authEmail=t.value; return; }
+  if(t.id==="jn-code"){ joinCode=t.value; return; }
   if(t.id==="fa-q"){ faFilter.q=t.value; var p=t.selectionStart; render();
     var n=document.getElementById("fa-q"); if(n){n.focus();n.setSelectionRange(p,p);} return; }
   if(t.id==="pk-q"){ pickFilter.q=t.value; var p2=t.selectionStart; closeSheet(); pickSheet();
@@ -1786,15 +2366,27 @@ document.addEventListener("change",function(ev){
     var v2=parseInt(t.value,10); if(isNaN(v2))return;
     S.league[t.dataset.lg]=v2; commit("League settings updated"); return; }
 });
+/* One heartbeat for everything that goes stale on its own: the wall clock the
+   season is measured against, the pick clock, and the countdown on screen. A
+   page left open on a kitchen counter for three days has to still be right. */
 setInterval(function(){
+  var wasDone=DONE.length;
+  NOW=Date.now();
+  if(EVENTS.length && EVENTS.filter(function(e){return e.ts<NOW;}).length!==wasDone){
+    DONE=EVENTS.filter(function(e){return e.ts<NOW;});
+    UPCOMING=EVENTS.filter(function(e){return e.ts>=NOW;});
+    render();
+  }
+  if(tickDraft()) return;                      /* commit() re-rendered already */
   var el=document.querySelector(".timer"); if(!el||TAB!=="draft") return;
-  var n=S.picks.length, dl=(n?S.picks[n-1].ts:S.league.draftTs)+S.league.pickHours*36e5;
+  var n=S.picks.length;
   if(S.league.draftMode==="live"&&n<draftOrder().length)
-    el.textContent=countdown(dl)+" left · "+S.league.pickHours+"h clock";
+    el.textContent=countdown(pickDeadline(n))+" left · "+S.league.pickHours+"h clock";
 },30000);
 
 loadState();
 initFirebase();
+tickDraft();
 render();
 })();
 </script>

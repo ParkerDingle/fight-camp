@@ -516,6 +516,70 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_health(args) -> int:
+    """Is the league still being fed? Exit non-zero if it is not.
+
+    This exists because of the way the pipeline died the first time: it did not
+    crash and it did not send anything. The scrape was refused, which was
+    expected and survivable, but the refusal was allowed to run out the job's
+    clock so the rebuild never happened — and because nothing was watching the
+    *output*, the site simply kept serving a fortnight-old league. Every screen
+    still worked. The standings just quietly stopped moving.
+
+    So this checks the thing that matters to a manager rather than the thing
+    that is easy to measure: are finished cards being scored, and has anything
+    arrived recently. A non-zero exit fails the workflow, and a failed workflow
+    is an email from GitHub — the one alerting channel that needs no setup at
+    all. Anything configured in notify.py gets told as well.
+    """
+    con = store.connect()
+    today = date.today()
+    problems, notes = [], []
+
+    unscored = [e for e in store.events_needing_results(con)
+                if e["date"] and e["date"] <= (today - timedelta(days=args.grace)).isoformat()]
+    for e in unscored:
+        problems.append(f"{e['date']}  {e['name']} — finished but not scored")
+
+    latest = con.execute("SELECT MAX(date) d FROM events WHERE status='completed'").fetchone()["d"]
+    if latest:
+        behind = (today - date.fromisoformat(latest)).days
+        notes.append(f"last scored card: {latest} ({behind} days ago)")
+        if behind > args.max_gap:
+            problems.append(f"no card has been scored in {behind} days — "
+                            f"the UFC does not take {behind}-day breaks")
+    else:
+        problems.append("there are no completed events in the database at all")
+
+    upcoming = con.execute(
+        "SELECT COUNT(*) n FROM events WHERE date > date('now')").fetchone()["n"]
+    notes.append(f"announced cards ahead: {upcoming}")
+    if not upcoming:
+        # Not fatal on its own — announced cards come from the same site that
+        # gets refused — but it is why the schedule screen would be empty.
+        notes.append("  (no forward schedule: the app cannot show who fights next)")
+
+    last = con.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 1").fetchone()
+    if last:
+        age_h = (time.time() - last["started_at"]) / 3600
+        notes.append(f"last pipeline run: {last['kind']} "
+                     f"{'ok' if last['ok'] else 'FAILED'}, {age_h:.0f}h ago")
+
+    print("\n".join(notes))
+    if problems:
+        print("\nPROBLEMS")
+        for p in problems:
+            print(f"  - {p}")
+        try:
+            notify.send("The Fight Camp: results have stopped arriving",
+                        "\n".join(problems) + "\n\n" + "\n".join(notes))
+        except Exception:
+            pass
+        return 1
+    print("\nhealthy")
+    return 0
+
+
 def main(argv=None) -> int:
     # Shared options are accepted on both sides of the subcommand, because
     # `backfill --since X` is what anyone would type first.  The subparser copies
@@ -561,6 +625,13 @@ def main(argv=None) -> int:
     sub.add_parser("roster", parents=[common],
                    help="refresh who is under contract (one request)"
                    ).set_defaults(fn=cmd_roster)
+    h = sub.add_parser("health", parents=[common],
+                       help="is the league still being fed? non-zero if not")
+    h.add_argument("--grace", type=int, default=3,
+                   help="days a finished card may go unscored before it counts")
+    h.add_argument("--max-gap", type=int, default=16,
+                   help="days without a scored card before that is a problem")
+    h.set_defaults(fn=cmd_health)
     sub.add_parser("status", parents=[common], help="what is in the database"
                    ).set_defaults(fn=cmd_status)
 
