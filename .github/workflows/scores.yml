@@ -138,22 +138,72 @@ jobs:
           con.close()
           PY
 
+      # Publishing is the one step that can collide with a person.
+      #
+      # schedule/go-serverless.ps1 pushes the same three things this job writes
+      # — the page, the service worker and the database — and it exists exactly
+      # so somebody can scrape from home on a day the runner is refused. So the
+      # two *will* land on top of each other, and on 9 Sep they did: this step
+      # committed, then `git pull --rebase` stopped dead on
+      #
+      #     CONFLICT (content): Merge conflict in pipeline/data/ufc.db
+      #
+      # which is git saying the only true thing it can about a SQLite file two
+      # machines rewrote independently. The run failed, the page went unpublished
+      # and everyone got an email about a pipeline that was working fine.
+      #
+      # Rebase was the wrong model. Nothing here is a change to be replayed: the
+      # site is a pure function of (database + template), and the database is
+      # two sets of rows that both belong. So when the branch has moved: take
+      # their tree, fold this run's rows into it with `pipeline.py merge-db`
+      # (which knows a completed card beats an announced one, and that a
+      # fighter-page refresh must not undo a roster pass), rebuild, and push a
+      # fast-forward. There is nothing left for git to reconcile.
       - name: Publish
         if: ${{ inputs.job != 'verify' }}
         run: |
-          cp -a _site/. .
-          rm -rf _site
           git config user.name  "fight-camp bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "nothing changed"
-          else
-            git commit -m "League update: ${{ inputs.job || 'nightly' }} $(date -u +%Y-%m-%d)"
-            # Another run may have pushed while this one was scraping.
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
-            git push
-          fi
+          base="$(git rev-parse HEAD)"
+
+          for attempt in 1 2 3; do
+            cp -a _site/. .
+            rm -rf _site
+            git add -A
+            if git diff --cached --quiet; then
+              echo "nothing changed"
+              exit 0
+            fi
+            git commit -q -m "League update: ${{ inputs.job || 'nightly' }} $(date -u +%Y-%m-%d)"
+            if git push -q origin "HEAD:$GITHUB_REF_NAME"; then
+              echo "published"
+              exit 0
+            fi
+
+            git fetch -q origin "$GITHUB_REF_NAME"
+            remote="$(git rev-parse "origin/$GITHUB_REF_NAME")"
+            if [ "$remote" = "$base" ]; then
+              echo "::error title=Push refused::The branch has not moved, so this was not a race. Check Settings -> Actions -> General -> Workflow permissions."
+              exit 1
+            fi
+
+            echo "beaten to the branch by $(git rev-parse --short "$remote"); folding this run into it (attempt $attempt)"
+            cp pipeline/data/ufc.db "$RUNNER_TEMP/ours.db"
+            git reset --hard -q "$remote"
+            base="$remote"
+            cd pipeline
+            python pipeline.py merge-db "$RUNNER_TEMP/ours.db"
+            python pipeline.py export --since "$SEASON_START"
+            python build_app.py --draft-date "$DRAFT_DATE" --managers "$MANAGERS"
+            python build_site.py --out ../_site
+            # The rebuild reopened the database, so fold its write-ahead log in
+            # again before this loop commits the file.
+            python -c "import sqlite3;c=sqlite3.connect('data/ufc.db');c.execute('PRAGMA wal_checkpoint(TRUNCATE)');c.close()"
+            cd ..
+          done
+
+          echo "::error title=Could not publish::Three pushes in a row were beaten to the branch."
+          exit 1
 
       - name: Say whether the scrape got through
         if: always()
