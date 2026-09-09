@@ -208,6 +208,155 @@ def log_run(con, kind: str, started: float, ok: bool, detail: str) -> None:
     con.commit()
 
 
+# --------------------------------------------------------------------------
+# Folding two copies of the database together
+#
+# Two machines write this file. GitHub writes it on a schedule; the PC writes
+# it whenever somebody runs catch-up.ps1 — which exists precisely because
+# ufcstats will talk to a home connection on days it refuses a datacenter. So
+# the two copies diverge by design, and on any given day each usually holds
+# something the other does not: the runner has a fresh rankings and roster
+# pass, the PC has the card that actually got scraped.
+#
+# Picking a winner therefore throws away real work whichever way you pick, and
+# git cannot help — to git this is a binary file two people rewrote, which is a
+# conflict and nothing more. So merge it here, row by row, where the meaning of
+# each row is known. Every rule below answers the same question: which of these
+# two versions of this row was written by someone who knew more?
+
+# A card that has finished outranks one that is still only announced, whatever
+# the timestamps say: 'completed' is the state you can only reach by having
+# read the result.
+_STATUS_RANK = {"completed": 2, "scheduled": 1, "announced": 1}
+
+
+def _rank(status: str | None) -> int:
+    return _STATUS_RANK.get(status or "", 0)
+
+
+def _stamp(row, field: str) -> float:
+    try:
+        return float(row[field] or 0)
+    except (KeyError, IndexError, TypeError):
+        return 0.0
+
+
+def _wins(incoming, current, status_field: str | None, stamp_field: str) -> bool:
+    """Is `incoming` the better-informed version of this row?"""
+    if status_field:
+        a, b = _rank(incoming[status_field]), _rank(current[status_field])
+        if a != b:
+            return a > b
+    return _stamp(incoming, stamp_field) > _stamp(current, stamp_field)
+
+
+def _stat_signal(row) -> int:
+    """How much of a fight a statistics row appears to describe.
+
+    Rows scraped before the totals-table fix hold round one's numbers rather
+    than the whole fight's, so they are strictly smaller than a correct row for
+    the same bout. Attempts rather than landed, because attempts scale with time
+    in the cage and do not depend on how good the night was.
+    """
+    return sum(int(row[c] or 0) for c in
+               ("sig_str_attempted", "total_str_attempted", "td_attempted", "ctrl_sec"))
+
+
+def merge_from(con, other_path: Path | str) -> dict:
+    """Fold another copy of this database into this one. Returns what moved.
+
+    Never removes anything: a row present here and absent there stays. The
+    other file is opened through connect(), so an older copy is brought up to
+    the current schema first — which does write to it, and is why callers pass
+    a temporary copy rather than the original.
+    """
+    other = connect(other_path)
+    moved = dict.fromkeys(
+        ("events", "bouts", "bout_stats", "fighters", "flags", "aliases", "runs"), 0)
+
+    for row in other.execute("SELECT * FROM events"):
+        cur = con.execute("SELECT * FROM events WHERE event_id=?",
+                          (row["event_id"],)).fetchone()
+        if cur is None or _wins(row, cur, "status", "scraped_at"):
+            _upsert(con, "events", ["event_id"], dict(row))
+            moved["events"] += 1
+
+    for row in other.execute("SELECT * FROM bouts"):
+        cur = con.execute("SELECT * FROM bouts WHERE bout_id=?",
+                          (row["bout_id"],)).fetchone()
+        if cur is None or _wins(row, cur, "status", "updated_at"):
+            _upsert(con, "bouts", ["bout_id"], dict(row))
+            moved["bouts"] += 1
+
+    for row in other.execute("SELECT * FROM bout_stats"):
+        cur = con.execute("SELECT * FROM bout_stats WHERE bout_id=? AND fighter_id=?",
+                          (row["bout_id"], row["fighter_id"])).fetchone()
+        if cur is None or _stat_signal(row) > _stat_signal(cur):
+            _upsert(con, "bout_stats", ["bout_id", "fighter_id"], dict(row))
+            moved["bout_stats"] += 1
+
+    # A fighter is written by two different passes that know different things,
+    # so the row is merged in two halves. Taking the whole row on updated_at
+    # would let a fighter-page refresh silently undo a roster pass — every
+    # released fighter quietly becomes signable again, with nothing in any log
+    # to say why. That is the exact failure go-serverless.ps1 refuses to make,
+    # and it must not happen here either.
+    for row in other.execute("SELECT * FROM fighters"):
+        cur = con.execute("SELECT * FROM fighters WHERE fighter_id=?",
+                          (row["fighter_id"],)).fetchone()
+        if cur is None:
+            _upsert(con, "fighters", ["fighter_id"], dict(row))
+            moved["fighters"] += 1
+            continue
+        keep = dict(cur)
+        touched = False
+        if _stamp(row, "updated_at") > _stamp(cur, "updated_at"):
+            for c in ("name", "nickname", "wins", "losses", "draws",
+                      "division", "rank", "updated_at"):
+                keep[c] = row[c]
+            touched = True
+        if _stamp(row, "roster_at") > _stamp(cur, "roster_at"):
+            keep["on_roster"], keep["roster_at"] = row["on_roster"], row["roster_at"]
+            touched = True
+        if touched:
+            _upsert(con, "fighters", ["fighter_id"], keep)
+            moved["fighters"] += 1
+
+    for row in other.execute("SELECT * FROM flags"):
+        cur = con.execute("SELECT 1 FROM flags WHERE bout_id=? AND fighter_id=? AND type=?",
+                          (row["bout_id"], row["fighter_id"], row["type"])).fetchone()
+        if cur is None:
+            con.execute("INSERT OR IGNORE INTO flags (bout_id,fighter_id,type) VALUES (?,?,?)",
+                        (row["bout_id"], row["fighter_id"], row["type"]))
+            moved["flags"] += 1
+
+    for row in other.execute("SELECT * FROM aliases"):
+        cur = con.execute("SELECT * FROM aliases WHERE from_id=?",
+                          (row["from_id"],)).fetchone()
+        if cur is None or _stamp(row, "at") > _stamp(cur, "at"):
+            _upsert(con, "aliases", ["from_id"], dict(row))
+            moved["aliases"] += 1
+
+    # The run log is diagnostics, but it is the diagnostics somebody reads at
+    # 8am when the standings have not moved, so keep both machines' entries.
+    # `id` is an autoincrement and means nothing across two files; (kind,
+    # started_at) is what actually identifies a run.
+    for row in other.execute("SELECT * FROM runs"):
+        cur = con.execute("SELECT 1 FROM runs WHERE kind=? AND started_at=?",
+                          (row["kind"], row["started_at"])).fetchone()
+        if cur is None:
+            con.execute("INSERT INTO runs (kind,started_at,finished_at,ok,detail)"
+                        " VALUES (?,?,?,?,?)",
+                        (row["kind"], row["started_at"], row["finished_at"],
+                         row["ok"], row["detail"]))
+            moved["runs"] += 1
+
+    con.commit()
+    other.close()
+    log.info("merged in: %s", ", ".join(f"{v} {k}" for k, v in moved.items() if v) or "nothing")
+    return moved
+
+
 def stats(con) -> dict:
     q = lambda s: con.execute(s).fetchone()[0]
     return {

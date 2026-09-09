@@ -516,6 +516,24 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_merge_db(args) -> int:
+    """Fold another copy of the database into this one.
+
+    Used by the publish step after somebody's PC deploy has landed on the
+    branch mid-run. Both copies hold real work — see store.merge_from — so the
+    answer is never to pick one.
+    """
+    con = store.connect()
+    before = store.stats(con)
+    moved = store.merge_from(con, args.path)
+    after = store.stats(con)
+    print(json.dumps({"merged": moved,
+                      "gained": {k: after[k] - before[k] for k in after
+                                 if after[k] != before[k]},
+                      "now": after}, indent=2))
+    return 0
+
+
 def cmd_health(args) -> int:
     """Is the league still being fed? Exit non-zero if it is not.
 
@@ -634,6 +652,10 @@ def main(argv=None) -> int:
     h.set_defaults(fn=cmd_health)
     sub.add_parser("status", parents=[common], help="what is in the database"
                    ).set_defaults(fn=cmd_status)
+    m = sub.add_parser("merge-db", parents=[common],
+                       help="fold another copy of the database into this one")
+    m.add_argument("path", help="the other ufc.db (it is read, and schema-upgraded)")
+    m.set_defaults(fn=cmd_merge_db)
 
     args = p.parse_args(argv)
     setup_logging(args.verbose)
