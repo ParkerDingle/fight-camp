@@ -37,7 +37,7 @@ concurrency:
 
 env:
   DRAFT_DATE: "2026-09-05"
-  MANAGERS: "Parker,Cian,Daniel,Chris,Jackson,Hugh,Mark"
+  MANAGERS: "Parker,Cian,Daniel,Chris,Jackson"
   SEASON_START: "2025-09-01"
 
 jobs:
